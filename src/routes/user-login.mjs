@@ -3,7 +3,7 @@ import passport from 'passport';
 
 const router = Router();
 
-router.post('/api/auth', passport.authenticate("local"), (request, response) => {
+router.post('/api/user/login', passport.authenticate("local"), (request, response) => {
   response.sendStatus(200)
 });
 

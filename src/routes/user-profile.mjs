@@ -1,4 +1,6 @@
 import { Router } from "express";
+import bcrypt from 'bcrypt';
+import { User } from '../mongoose/schemas/user.mjs'; // <-- Подключаем твою модель
 
 const router = Router();
 
@@ -8,13 +10,43 @@ router.get('/api/profile', (req, res) => {
   }
 
   res.send({
-    id: req.user._id,
     name: req.user.name,
     phonenumber: req.user.phonenumber,
     displayName: req.user.displayName,
-    createdAt: req.user.createdAt,
-    updatedAt: req.user.updatedAt
+    password: req.user.password  // <-- убрать перед продакшеном
   });
 });
+
+router.patch('/api/profile', async (req, res) => {
+  if (!req.user) return res.sendStatus(401);
+
+  const { name, displayName, phonenumber, password } = req.body;
+
+  if (name) req.user.name = name;
+  if (displayName) req.user.displayName = displayName;
+  if (phonenumber) req.user.phonenumber = phonenumber;
+
+  if (password) {
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    req.user.password = hashedPassword;
+  }
+
+  try {
+    await req.user.save();
+    res.sendStatus(200);
+  } catch (err) {
+    // Обработка ошибок дубликатов (MongoDB error code 11000)
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyValue)[0];
+      return res.status(409).send({ error: `${field} already taken` });
+    }
+
+    // Все прочие ошибки
+    console.error('Ошибка при обновлении профиля:', err);
+    res.sendStatus(500);
+  }
+});
+
 
 export default router;

@@ -12,13 +12,14 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser(async (id, done) => {
   console.log(`Inside Deserilizer`);
   try {
-    const findUser = await User.findById(id)
-    if (!findUser) throw new Error("User Not Found");
+    const findUser = await User.findById(id);
+    if (!findUser) return done(null, false);
     done(null, findUser);
   } catch (err) {
     done(err, null);
   }
 });
+
 
 export default passport.use(
   new Strategy(
@@ -27,17 +28,22 @@ export default passport.use(
       passwordField: "password",
     },
     async (phonenumber, password, done) => {
-      console.log(`Phonenumber: ${phonenumber}`);
-      console.log(`Password: ${password}`);
       try {
         const findUser = await User.findOne({ phonenumber });
-        if (!findUser) throw new Error("User not found");
-        if (!comparePassword(password, findUser.password))
-          throw new Error("Bad Credentials");
-        done(null, findUser);
+        if (!findUser) {
+          return done(null, false, { message: "User not found" });
+        }
+
+        const passwordMatches = comparePassword(password, findUser.password);
+        if (!passwordMatches) {
+          return done(null, false, { message: "Bad credentials" });
+        }
+
+        return done(null, findUser);
       } catch (err) {
-        done(err, null);
+        return done(err);
       }
     }
   )
 );
+

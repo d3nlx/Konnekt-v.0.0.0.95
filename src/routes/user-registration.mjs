@@ -10,7 +10,7 @@ router.get('/api/hello', (request, response) => {
   response.send({msg: "hello world! server on"})
 });
 
-router.post('/api/users', checkSchema(createUserValidationSchema), async (req, res) => {
+router.post('/api/users/registration', checkSchema(createUserValidationSchema), async (req, res) => {
   const result = validationResult(req);
   if (!result.isEmpty()) return res.status(400).send(result.array());
   const data = matchedData(req);
@@ -30,19 +30,5 @@ router.post('/api/users', checkSchema(createUserValidationSchema), async (req, r
     return res.sendStatus(400);
   }
 });
-
-router.get('/api/profile', (req, res) => {
-  if (!req.user) {
-    return res.status(401).send({ msg: 'Not authenticated' });
-  }
-
-  res.send({
-    name: req.user.name,
-    phonenumber: req.user.phonenumber,
-    displayName: req.user.displayName,
-    password: req.user.password, // потом уберёшь
-  });
-});
-
 
 export default router;

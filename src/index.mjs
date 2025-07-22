@@ -1,39 +1,50 @@
-import express from 'express';
+import express from 'express'; 
 import routes from './routes/index.mjs';
 import session from 'express-session';
 import passport from 'passport';
 import mongoose from 'mongoose';
 import MongoStore from 'connect-mongo';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import "./strategies/local-strategy.mjs";
 
 const app = express();
 
-mongoose.connect("mongodb://localhost/konnekt_exp").then(() => console.log("Connected to Database")).catch((err) => console.log(`Error: ${err}`));
+// Получаем путь к текущей директории (чтобы работал import.meta.url)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Подключаем статику — теперь ты можешь заходить на registration.html
+app.use(express.static(path.join(__dirname, 'public')));
+
+mongoose.connect("mongodb://localhost/konnekt_exp")
+  .then(() => console.log("Connected to Database"))
+  .catch((err) => console.log(`Error: ${err}`));
 
 app.use(express.json());
 
 app.use(session({
-    secret: 'anson the dev',
-    saveUninitialized: false,
-    resave: false,
-    rolling: true,
-    cookie: {
-      maxAge: 1000 * 60 * 60 * 24 * 30,
-      httpOnly: true,
-    },
-    store: MongoStore.create({
-      client: mongoose.connection.getClient()
-    })
+  secret: 'anson the dev',
+  saveUninitialized: false,
+  resave: false,
+  rolling: true,
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24 * 30,
+    httpOnly: true,
+  },
+  store: MongoStore.create({
+    client: mongoose.connection.getClient()
   })
-);
+}));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
 app.use(routes);
 
-const PORT = process.env.PORT ||3000;
-
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Running on Port ${PORT}`)
+  console.log(`Running on Port ${PORT}`);
 });
+
+// запускать в терминале
+// node src/index.mjs

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Profile</title>
+  </head>
+  <body>
+    <h1>Your Profile</h1>
+
+    <p>Name: <span class="js-name"></span></p>
+    <p>Display Name: <span class="js-display-name"></span></p>
+    <p>Phone Number: <span class="js-phonenumber"></span></p>
+    <p>Password: <span class="js-password"></span></p> <!-- Still shown temporarily -->
+
+    <hr />
+
+    <input class="js-name-input" type="text" placeholder="New name" />
+    <button class="js-change-name-button">Change Name</button>
+
+    <input class="js-display-name-input" type="text" placeholder="New display name" />
+    <button class="js-change-display-name-button">Change Display Name</button>
+
+    <input class="js-phonenumber-input" type="text" placeholder="New phone number" />
+    <button class="js-change-phonenumber-button">Change Phone Number</button>
+
+    <input class="js-password-input" type="text" placeholder="New password" />
+    <button class="js-change-password-button">Change Password</button>
+
+    <hr />
+
+    <button class="js-log-out-button">Log Out</button>
+    <button class="js-open-chats-button">Open Chats</button>
+
+    <script type="module" src="/profile.js"></script>
+  </body>
+</html>
