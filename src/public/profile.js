@@ -75,5 +75,5 @@ document.querySelector('.js-log-out-button').addEventListener('click', async () 
 
 // Open chats
 document.querySelector('.js-open-chats-button').addEventListener('click', () => {
-  window.location.href = 'chat.html';
+  window.location.href = 'chats.html';
 });

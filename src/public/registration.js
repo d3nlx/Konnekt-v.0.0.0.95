@@ -24,7 +24,7 @@ document.querySelector('.js-sign-up-button').addEventListener('click', async () 
 
   if (response.ok) {
     console.log("u registred")
-    window.location.href = 'registration.html';
+    window.location.href = '/profile.html';
   } else {
     const errorData = await response.json().catch(() => ({}));
     registrationError.textContent = errorData?.[0]?.msg || 'Ошибка регистрации';

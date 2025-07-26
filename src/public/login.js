@@ -19,7 +19,7 @@ document.querySelector('.js-log-in-button').addEventListener('click', async () =
     });
 
     if (response.ok) {
-      console.log("u registred")
+      console.log("u login")
       window.location.href = 'profile.html';
     } else {
       const errorData = await response.json();
