@@ -10,6 +10,7 @@ router.get('/api/profile', (req, res) => {
   }
 
   res.send({
+    _id: req.user._id,
     name: req.user.name,
     phonenumber: req.user.phonenumber,
     displayName: req.user.displayName,

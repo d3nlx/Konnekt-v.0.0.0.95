@@ -65,4 +65,24 @@ router.get('/:contactId', async (req, res) => {
   }
 });
 
+// Удаление сообщения по ID
+router.delete('/:id', async (req, res) => {
+  const messageId = req.params.id;
+
+  try {
+    const message = await Message.findById(messageId);
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // ❌ Проверку убираем — теперь можно удалять любые сообщения
+    await message.deleteOne();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 export default router;

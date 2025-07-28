@@ -8,20 +8,26 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Not logged in' });
-    console.log(req.user)
 
     const contacts = await Contact.find({ owner: req.user._id }).populate('contact', 'name phonenumber displayName');
 
+    // 👉 Временный лог всех контактов с populate
+    console.log('Контакты с populate:');
+    console.log(JSON.stringify(contacts, null, 2));
+
     res.json(contacts.map(c => ({
-      id: c._id,
-      name: c.contact.name,
-      phonenumber: c.contact.phonenumber,
-      displayName: c.contact.displayName,
+      id: c.contact?._id,  // Используем опциональную цепочку на всякий случай
+      contactEntryId: c._id,
+      name: c.contact?.name,
+      phonenumber: c.contact?.phonenumber,
+      displayName: c.contact?.displayName,
     })));
   } catch (err) {
+    console.error('Ошибка получения контактов:', err);
     res.status(500).json({ error: 'Something went wrong' });
   }
 });
+
 
 // POST /api/contacts — Найти пользователя и добавить в контакты
 router.post('/', async (req, res) => {
@@ -64,7 +70,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'User already in contacts' });
     }
 
-    // Добавим нового контакта
+    // Добавление нового контакта
     const newContact = await Contact.create({
       owner: req.user._id,
       contact: foundUser._id,

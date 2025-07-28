@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
       text.textContent = `${c.displayName} (${c.phonenumber})`;
       text.style.cursor = 'pointer';
       text.onclick = () => {
-        window.location.href = `chat.html?userId=${c.id}`;
+        window.location.href = `chat.html?contactId=${c.id}&contactName=${encodeURIComponent(c.displayName)}`;
       };
 
       const del = document.createElement('button');
@@ -24,14 +24,15 @@ document.addEventListener('DOMContentLoaded', () => {
       del.style.marginLeft = '10px';
       del.style.color = 'red';
       del.onclick = async (e) => {
-        e.stopPropagation(); // Не переходить по клику на контакт
+        e.stopPropagation();
         const confirmed = confirm(`Удалить ${c.displayName} из контактов?`);
         if (!confirmed) return;
 
-        await fetch(`/api/contacts/${c.id}`, {
+        await fetch(`/api/contacts/${c.contactEntryId}`, {
           method: 'DELETE',
           credentials: 'include'
         });
+
         await loadContacts();
       };
 
