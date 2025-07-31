@@ -60,6 +60,11 @@ io.on('connection', (socket) => {
       from: userId,
       message,
     });
+
+    io.to(userId).emit('new_message', {
+      from: userId,
+      message,
+    });
   });
 });
 
