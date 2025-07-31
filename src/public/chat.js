@@ -73,3 +73,6 @@ document.querySelector('#message-form').addEventListener('submit', async (e) => 
 await loadCurrentUser();
 await loadContactInfo();
 await loadMessages();
+
+
+// засейвить как работают сообщения
