@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Socket Test</title>
+</head>
+<body>
+  <h1>Socket.IO Test</h1>
+  <input type="text" id="msgInput" placeholder="Введите сообщение" />
+  <button id="sendBtn">Отправить</button>
+  <ul id="chat"></ul>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    socket.on('connect', () => {
+      console.log('🔌 Подключено к серверу');
+    });
+
+    document.getElementById('sendBtn').onclick = () => {
+      const msg = document.getElementById('msgInput').value;
+      socket.emit('send_message', { text: msg });
+    };
+
+    socket.on('new_message', (data) => {
+      const li = document.createElement('li');
+      li.textContent = `Сообщение: ${data.text}`;
+      document.getElementById('chat').appendChild(li);
+    });
+  </script>
+</body>
+</html>

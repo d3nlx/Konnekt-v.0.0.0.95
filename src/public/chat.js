@@ -1,116 +1,72 @@
 const urlParams = new URLSearchParams(window.location.search);
 const contactId = urlParams.get('contactId');
+const contactName = urlParams.get('contactName');
 
 const messagesContainer = document.querySelector('#messages');
 const contactInfo = document.querySelector('#contact-info');
 
 let currentUserId = null;
+let socket = null;
 
-// Загружаем информацию о текущем пользователе
 async function loadCurrentUser() {
-  try {
-    const res = await fetch('/api/profile');
-    if (!res.ok) throw new Error('Не авторизован');
-    const user = await res.json();
-    currentUserId = user._id;
-  } catch (err) {
-    console.error('Ошибка загрузки профиля:', err);
-    alert('Ошибка авторизации. Попробуйте войти заново.');
-  }
-}
-
-// Загружаем имя собеседника
-async function loadContactInfo() {
-  const res = await fetch(`/api/user/${contactId}`);
+  const res = await fetch('/api/profile');
   const user = await res.json();
-  contactInfo.textContent = `Chat with: ${user.displayName || user.name || user.phonenumber}`;
-}
+  currentUserId = user._id;
 
-// Загружаем сообщения
-async function loadMessages() {
-  if (!currentUserId) {
-    console.warn("currentUserId еще не определён");
-    return;
-  }
+  socket = io(); // Подключение к сокету
 
-  const res = await fetch(`/api/messages/${contactId}`);
-  const messages = await res.json();
+  socket.on('connect', () => {
+    console.log('🔌 Socket.IO подключён');
+  });
 
-  console.log('Текущий пользователь:', currentUserId);
-  console.log('Загруженные сообщения:', messages);
-
-  renderMessages(messages, currentUserId);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-// ✅ Рендерим сообщения с чекбоксами и кнопками удаления
-function renderMessages(messages, currentUserId) {
-  messagesContainer.innerHTML = "";
-
-  messages.forEach((message) => {
-    const messageDiv = document.createElement("div");
-    messageDiv.className = message.sender === currentUserId ? "outgoing" : "incoming";
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.classList.add("message-checkbox");
-    checkbox.dataset.messageId = message.id;
-    
-
-    const content = document.createElement("span");
-    content.textContent = message.message;
-
-    const deleteBtn = document.createElement("button");
-    deleteBtn.textContent = "🗑️";
-    deleteBtn.addEventListener("click", async () => {
-      const confirmed = confirm("Удалить это сообщение и все выбранные?");
-      if (!confirmed) return;
-
-      const selectedIds = getSelectedMessageIds();
-
-      // Гарантируем, что сообщение, на которое нажали, тоже будет в списке
-      if (!selectedIds.includes(message.id)) {
-        selectedIds.push(message.id);
-      }
-
-      // Удалим все сообщения по очереди
-      for (const id of selectedIds) {
-        await fetch(`/api/messages/${id}`, {
-          method: "DELETE",
-        });
-      }
-
-      loadMessages(); // Перезагрузим
-    });
-
-    messageDiv.appendChild(checkbox);
-    messageDiv.appendChild(content);
-    messageDiv.appendChild(deleteBtn);
-    messagesContainer.appendChild(messageDiv);
+  socket.on('new_message', (data) => {
+    const { from, message } = data;
+    if (from === contactId || from === currentUserId) {
+      appendMessage(from === currentUserId, message);
+    }
   });
 }
 
-// Вспомогательная функция: получить ID всех выделенных чекбоксами сообщений
-function getSelectedMessageIds() {
-  const checkboxes = document.querySelectorAll(".message-checkbox:checked");
-  return Array.from(checkboxes).map((cb) => cb.dataset.messageId);
+async function loadContactInfo() {
+  contactInfo.textContent = `Chat with: ${decodeURIComponent(contactName)}`;
 }
 
-// Отправка нового сообщения
+async function loadMessages() {
+  const res = await fetch(`/api/messages/${contactId}`);
+  const messages = await res.json();
+  messagesContainer.innerHTML = '';
+  messages.forEach(msg => appendMessage(msg.sender === currentUserId, msg.message));
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function appendMessage(isOwn, text) {
+  const div = document.createElement('div');
+  div.className = isOwn ? 'outgoing' : 'incoming';
+  div.textContent = text;
+  messagesContainer.appendChild(div);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
 document.querySelector('#message-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const input = document.querySelector('#message-input');
   const text = input.value.trim();
   if (!text) return;
 
+  // Отправка на сервер
   await fetch('/api/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ receiverId: contactId, message: text })
+    body: JSON.stringify({ receiverId: contactId, message: text }),
+  });
+
+  // Отправка по сокету
+  socket.emit('send_message', {
+    to: contactId,
+    message: text,
   });
 
   input.value = '';
-  await loadMessages();
 });
 
 // Инициализация

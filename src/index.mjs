@@ -1,60 +1,70 @@
-import express from 'express'; 
-import routes from './routes/index.mjs';
-import session from 'express-session';
-import passport from 'passport';
+import express from 'express';
 import mongoose from 'mongoose';
-import MongoStore from 'connect-mongo';
+import passport from 'passport';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import "./strategies/local-strategy.mjs";
+import http from 'http';
+import { Server } from 'socket.io';
+import sharedSession from 'express-socket.io-session';
+import sessionMiddleware from './session.js';
 
+import routes from './routes/index.mjs';
 import contactsRoutes from './routes/contacts.mjs';
-
 import messagesRouter from './routes/messages.mjs';
+import './strategies/local-strategy.mjs';
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
-// Получаем путь к текущей директории (чтобы работал import.meta.url)
+// Для пути
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Подключаем статику — теперь ты можешь заходить на registration.html
+// MongoDB
+await mongoose.connect("mongodb://localhost/konnekt_exp");
+console.log("✅ Подключено к MongoDB");
+
+// Middleware
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Подключаемся к MongoDB
-mongoose.connect("mongodb://localhost/konnekt_exp")
-  .then(() => console.log("Connected to Database"))
-  .catch((err) => console.log(`Error: ${err}`));
-
-// Для парсинга JSON тела запроса
 app.use(express.json());
-
-// Настройка session + cookie
-app.use(session({
-  secret: 'anson the dev', // любой секрет
-  saveUninitialized: false,
-  resave: false,
-  rolling: true, // обновлять срок действия cookie при каждом запросе
-  cookie: {
-    maxAge: 1000 * 60 * 60 * 24 * 30, // 30 дней
-    httpOnly: true,
-  },
-  store: MongoStore.create({
-    client: mongoose.connection.getClient()
-  })
-}));
-
-// Passport
+app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Роуты
 app.use(routes);
-
-app.use('/api/contacts', contactsRoutes); 
-
+app.use('/api/contacts', contactsRoutes);
 app.use('/api/messages', messagesRouter);
 
-// Запуск сервера
+// Привязка сессии к Socket.IO
+io.use(sharedSession(sessionMiddleware, { autoSave: true }));
+
+// Сокеты
+io.on('connection', (socket) => {
+  const userId = socket.handshake.session?.passport?.user;
+  if (!userId) {
+    console.log('❌ Гость не допущен к сокету');
+    socket.disconnect();
+    return;
+  }
+
+  console.log('🔌 Пользователь подключен к сокету:', userId);
+  socket.join(userId); // Подключение к своей комнате
+
+  // Получение и отправка сообщений
+  socket.on('send_message', (data) => {
+    const { to, message } = data;
+
+    // Отправка только конкретному получателю
+    io.to(to).emit('new_message', {
+      from: userId,
+      message,
+    });
+  });
+});
+
+// Старт сервера
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Running on Port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Сервер + сокеты запущены на http://localhost:${PORT}`);
 });
