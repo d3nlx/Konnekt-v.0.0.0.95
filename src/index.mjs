@@ -52,19 +52,23 @@ io.on('connection', (socket) => {
   socket.join(userId); // Подключение к своей комнате
 
   // Получение и отправка сообщений
-  socket.on('send_message', (data) => {
-    const { to, message } = data;
+  socket.on('send_message', ({ to, message, id, timestamp }) => {
+  const payload = {
+    from: userId,
+    message,
+    id,
+    timestamp,
+  };
 
-    // Отправка только конкретному получателю
-    io.to(to).emit('new_message', {
-      from: userId,
-      message,
-    });
+  io.to(to).emit('new_message', payload);     // собеседнику
+  io.to(userId).emit('new_message', payload); // себе (если захочу отрисовать у себя тоже через сокет)
+});
 
-    io.to(userId).emit('new_message', {
-      from: userId,
-      message,
-    });
+
+  socket.on('delete_message', ({ to, ids }) => {
+    // Отправляем всем в чате, что сообщения удалены
+    io.to(to).emit('messages_deleted', { ids });
+    io.to(userId).emit('messages_deleted', { ids }); // чтобы у себя тоже обновилось
   });
 });
 
