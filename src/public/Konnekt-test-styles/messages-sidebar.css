@@ -1,0 +1,63 @@
+.messages-sidebar {
+  position: fixed;
+  top: 121.5px;
+  left: 0;
+  bottom: 0;
+  width: 422px;
+  background-color: rgb(255, 255, 255);
+  border-right-width: 5px;
+  border-right-style: solid;
+  border-right-color: #4367B3;
+}
+
+.info-row {
+  display: flex;
+  flex-direction: row;
+  margin-top: 10px;
+  margin-left: 10px;
+  background-color: rgb(255, 255, 255);
+  margin-bottom: -4px;
+}
+
+.profile-picture-interlocutor {
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
+  border-style: solid;
+  border-color: rgb(247, 247, 247);
+}
+
+.message-info {
+  margin-left: 10px;
+  max-width: 310px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; 
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  /*
+  Если же нужно сделать многоточие, к примеру, на второй строке текста, используем следующий вариант. В свойстве -webkit-line-clamp указываем необходимое количество строк.
+  */
+
+  /*
+  Cвойство -webkit-line-clamp действительно работает только в браузерах, основанных на движке WebKit (например, Google Chrome, Safari, и все другие браузеры, использующие WebKit или Blink). В других браузерах, таких как Firefox и Microsoft Edge (на основе движка EdgeHTML или более старых версий), это решение не будет работать.
+  */
+}
+
+.interlocutor-name {
+  margin-bottom: 7px;
+  margin-top: 3px;
+}
+
+.message {
+  line-height: 20px;
+  color: rgb(131, 131, 131);
+}
+
+.send-message-time {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+

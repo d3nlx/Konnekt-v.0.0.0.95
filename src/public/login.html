@@ -2,10 +2,66 @@
 <html>
   <head>
     <title>konnekt</title>
+    <style>
+      body {
+        background-color: #3C5995;
+        font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+
+      }
+
+      .login-page-css {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 160px;
+      }
+
+      p {
+        margin: 0;
+        margin-bottom: 20px;
+        font-weight: 700;
+        font-size: 50px;
+        color: #FDFDFD;
+      }
+
+      input {
+        width: 250px;
+        height: 25px;
+        padding-left: 10px;
+        border: none;
+        border-radius: 3px;
+        margin-bottom: 5px;
+        color: #888888;
+      }
+
+      .css-log-in-button {
+        width: 262px;
+        height: 22px;
+        border: none;
+        border-radius: 3px;
+        background-color: #2F4576;
+        color: #FDFDFD;
+        font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+        cursor: pointer;
+      }
+
+      .css-sign-up-button {
+        margin-top: 10px;
+        background-color: #3C5995;
+        color: #CDDBDE;
+        border: none;
+        font-weight: lighter;
+        cursor: pointer;
+      }
+
+      .css-login-error {
+        color: white;
+      }
+    </style>
   </head>
   <body style="margin: 0;">
     <div class="login-page-css">
-      <p>konnekt</p>
+      <p>Konnekt</p>
       <input class="number js-number-input-login" type="text" placeholder="number">
       <input class="password js-password-input-login" type="text" placeholder="password">
       <div class="css-login-error login-error"></div>

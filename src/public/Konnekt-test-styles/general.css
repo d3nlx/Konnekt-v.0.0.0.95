@@ -1,0 +1,11 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  height: 3000px;
+  padding-top: 120px;
+  padding-left: 0px;
+}

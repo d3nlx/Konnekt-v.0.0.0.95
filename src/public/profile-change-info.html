@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <title>Profile</title>
+    <title>Test Profile page</title>
 
     <style>
 
@@ -88,6 +87,7 @@
         display: flex;
         flex-direction: column;
         
+        
         padding-top: 20px;
       }
 
@@ -100,8 +100,7 @@
         margin-bottom: 10px;
       }
 
-      .menu-pencil, 
-      .js-log-out-button {
+      .left-arrow {
         display: flex;
         justify-content: center; /* центр по горизонтали */
         align-items: center;     /* центр по вертикали */
@@ -115,34 +114,79 @@
         margin-left: 20px;
       }
 
-      .menu-pencil:hover,
-      .js-log-out-button:hover{
+      .left-arrow:hover{
         background-color: rgb(240, 240, 240);
       }
 
-      .menu-pencil-img{
-        width: 17px;
+      .left-arrow-img{
+        width: 20px;
       }
 
-      .log-out-button-img{
-        padding-left: 5px;
-        width: 25px;
+      .user-img-container{
+        display: flex;
+        justify-content: center;
+
       }
 
       .user-img{
         background-color: rgb(237, 236, 236);
         width: 100%;
-        /*border: 2px solid red;*/
+        width: 120px;   /* фикс ширина */
+        height: 120px;  /* фикс высота */
+        border-radius: 50%; /* круглая аватарка */
+        object-fit: cover;  /* чтобы картинка не растягивалась */
       }
 
       .user-info-container{
-        margin-left: 10px;
-        line-height: 35px;
+        margin-left: 25px;
+        margin-top: 50px;
       }
 
       .user-info{
         font-size: 20px;
         font-family: Arial, Helvetica, sans-serif;
+      }
+
+      .js-name-input,
+      .js-display-name-input,
+      .js-phonenumber-input,
+      .js-password-input{
+        margin-top: 15px;
+        background-color: rgb(249, 248, 248);
+        border-style: solid;
+        border-width: 1px;
+        border-radius: 5px;
+        padding-left: 10px;
+        width: 345px;
+        height: 45px;
+        vertical-align: middle;
+      }
+
+      .js-change-name-button,
+      .js-change-display-name-button,
+      .js-change-phonenumber-button,
+      .js-change-password-button{
+        margin-top: 15px;
+        margin-left: 3px;
+        width: 30px;
+        height: 30px;
+        border-radius: 50px;
+        border: none;
+        background-color: rgb(249, 248, 248);
+        vertical-align: middle;
+        cursor: pointer;
+      }
+
+      .js-change-name-button:hover,
+      .js-change-display-name-button:hover,
+      .js-change-phonenumber-button:hover,
+      .js-change-password-button:hover{
+        background-color: rgb(240, 240, 240);
+      }
+
+      .check-mark{
+        width: 100%;
+        padding-top: 4px;
       }
 
       .sidebar-right{
@@ -158,7 +202,6 @@
     </style>
   </head>
   <body>
-
     <div class="header">
       <div class="right-section"></div>
       <div class="middle-section">
@@ -168,7 +211,6 @@
         <p class="creator">DEV and SEO Denis Shvets</p>
       </div>
     </div>
-
     <div class="sidebar-left">
       <button class="js-open-chats-button">
         <img class="js-open-chats-button-img" src="imgs/icons8-menu-50.png">
@@ -177,21 +219,36 @@
 
     <div class="sidebar-middle">
       <div class="sidebar-middle-top-containder">
-        <button class="menu-pencil">
-          <img class="menu-pencil-img" src="imgs/free-icon-pencil-1828911.png">
+        <button class="left-arrow">
+          <img class="left-arrow-img" src="imgs/free-icon-left-arrow-271218.png">
         </button>
-        <button class="js-log-out-button">
-          <img class="log-out-button-img" src="imgs/free-icon-log-out-7850714.png">
-        </button>
+        
       </div>
 
-      <img class="user-img" src="imgs/free-icon-profile-user-4460344.png">
-
+      <div class="user-img-container">
+        <img class="user-img" src="imgs/free-icon-profile-user-4460344.png">
+      </div>
 
       <div class="user-info-container">
-        <p class="user-info">Name: <span class="js-name"></span></p>
-        <p class="user-info">Display Name: <span class="js-display-name"></span></p>
-        <p class="user-info">Phone Number: <span class="js-phonenumber"></span></p>
+        <input class="js-name-input" type="text" placeholder="New name" />
+        <button class="js-change-name-button">
+          <img class="check-mark" src="imgs/free-icon-check-mark-5206035.png">
+        </button>
+
+        <input class="js-display-name-input" type="text" placeholder="New display name" />
+        <button class="js-change-display-name-button">
+          <img class="check-mark" src="imgs/free-icon-check-mark-5206035.png">
+        </button>
+
+        <input class="js-phonenumber-input" type="text" placeholder="New phone number" />
+        <button class="js-change-phonenumber-button">
+          <img class="check-mark" src="imgs/free-icon-check-mark-5206035.png">
+        </button>
+
+        <input class="js-password-input" type="text" placeholder="New password" />
+        <button class="js-change-password-button">
+          <img class="check-mark" src="imgs/free-icon-check-mark-5206035.png">
+        </button>
       </div>
     </div>
 
@@ -199,9 +256,6 @@
 
     </div>
 
-    <button class="js-log-out-button">Log Out</button>
-    <button class="js-open-chats-button">Open Chats</button>
-
-    <script type="module" src="/profile.js"></script>
+    <script type="module" src="profile-change.js"></script>
   </body>
 </html>
