@@ -31,7 +31,7 @@ document.querySelector('.js-log-out-button').addEventListener('click', async () 
 
 // Open chats
 document.querySelector('.js-open-chats-button').addEventListener('click', () => {
-  window.location.href = 'chats.html';
+  window.location.href = 'chating.html';
 });
 
 document.querySelector('.menu-pencil').addEventListener('click', () => {

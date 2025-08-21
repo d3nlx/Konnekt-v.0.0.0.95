@@ -43,7 +43,7 @@ document.querySelector('.js-change-password-button').addEventListener('click', (
 
 // Open chats
 document.querySelector('.js-open-chats-button').addEventListener('click', () => {
-  window.location.href = 'chats.html';
+  window.location.href = 'chating.html';
 });
 
 

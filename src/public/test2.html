@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Profile</title>
+
+    <style>
+
+      .header{
+        background-color: rgb(241, 241, 241);
+        position: fixed;
+        top: 0px;
+        left: 0px;
+        right: 0px;
+        height: 20px;
+        z-index: 3;
+
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+
+        align-items: center;
+      }
+
+      .right-section{
+        width: 150px;
+      }
+
+      .middle-section{
+        width: 150px;
+      }
+
+      .title{
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: bold;
+        text-align: center;
+        color: #007bff;
+      }
+
+      .left-section{
+        width: 150px;
+      }
+
+      .creator{
+        font-size: 11px;
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: bold;
+        margin: 0;
+        color: #007bff;
+      }
+
+      .sidebar-left{
+        background-color: rgb(41, 58, 76);
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        top: 0px;
+        width: 70px;
+        z-index: 2;
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 35px;
+      }
+
+      .js-open-chats-button{
+        background-color: transparent;
+        border-style: none;
+        cursor: pointer;
+      }
+
+      .js-open-chats-button-img{
+        width: 25px;
+        height: 25px;
+      }
+
+      .sidebar-middle{
+        background-color: rgb(249, 248, 248);
+        position: fixed;
+        left: 70px;
+        bottom: 0;
+        top: 0px;
+        width: 430px;
+        z-index: 1;
+
+        display: flex;
+        flex-direction: column;
+        
+        padding-top: 20px;
+      }
+
+      .sidebar-middle-top-containder{
+        display: flex;
+        flex-direction: row;
+        justify-content: end;
+        margin-right: 13px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        background-color: gray;
+      }
+
+      .sidebar-right {
+        background-color: rgb(161, 224, 153);
+        position: fixed;
+        left: 500px;
+        bottom: 0;
+        top: 0;
+        width: calc(100% - 500px);
+        z-index: 1;
+
+        display: flex;
+        flex-direction: column; /* вертикальное расположение */
+      }
+
+      /* Заголовок */
+      .chat-header {
+        padding-top: 25px;
+        padding-bottom: 10px;
+        padding-left: 10px;
+        background: #f0f0f0;
+        border-bottom: 1px solid #ccc;
+        font-weight: bold;
+      }
+
+      /* Сообщения занимают всё пространство между header и input */
+      .chat-messages {
+        flex: 1;
+        overflow-y: auto; /* прокрутка, если сообщений много */
+        padding: 10px;
+        background: rgb(161, 224, 153);
+      }
+
+      /* Инпут внизу */
+      .chat-input {
+        display: flex;
+        border-top: 1px solid #ccc;
+        padding: 5px;
+        background: #fff;
+      }
+      .chat-input input {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        outline: none;
+        margin-right: 10px;
+      }
+      .chat-input button {
+        padding: 10px 20px;
+        border: none;
+        background: #007bff;
+        color: #fff;
+        cursor: pointer;
+      }
+      .chat-input button:hover {
+        background: #0056b3;
+      }
+
+    </style>
+  </head>
+  <body>
+
+    <div class="header">
+      <div class="right-section"></div>
+      <div class="middle-section">
+        <p class="title">Konnekt</p>
+      </div>
+      <div class="left-section">
+        <p class="creator">DEV and SEO Denis Shvets</p>
+      </div>
+    </div>
+
+    <div class="sidebar-left">
+      <button class="js-open-chats-button">
+        <img class="js-open-chats-button-img" src="imgs/icons8-menu-50.png">
+      </button>
+    </div>
+
+    <div class="sidebar-middle">
+      <div class="sidebar-middle-top-containder">
+        <div class="color"></div>
+      </div>
+    </div>
+
+    <div class="sidebar-right">
+      <div class="sidebar-right-top-containder">
+        <div class="chat-header" id="chatHeader">Выберите контакт</div>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input">
+        <input type="text" id="messageInput" placeholder="Введите сообщение...">
+        <button id="sendBtn">Отправить</button>
+      </div>
+    </div>
+
+    <button class="js-open-chats-button">Open Chats</button>
+
+    <script type="module" src="/profile.js"></script>
+  </body>
+</html>
