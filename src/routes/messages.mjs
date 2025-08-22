@@ -39,18 +39,30 @@ router.post('/', async (req, res) => {
   }
 });
 
+
+// ✅ Получение сообщений (с поддержкой ?limit=N)
 router.get('/:contactId', async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Not logged in' });
 
     const contactId = req.params.contactId;
+    const limit = parseInt(req.query.limit, 10) || 0; // если нет ?limit=, то 0 (без лимита)
 
-    const messages = await Message.find({
+    const query = Message.find({
       $or: [
         { sender: req.user._id, receiver: contactId },
         { sender: contactId, receiver: req.user._id }
       ]
-    }).sort({ timestamp: 1 }); // по возрастанию
+    }).sort({ timestamp: -1 }); // последние сверху
+
+    if (limit > 0) {
+      query.limit(limit);
+    }
+
+    let messages = await query;
+
+    // так как сортировка -1 (от новых к старым), переворачиваем, чтобы вернуть в порядке от старых к новым
+    messages = messages.reverse();
 
     res.json(messages.map(msg => ({
       id: msg._id,
@@ -83,6 +95,5 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
-
 
 export default router;

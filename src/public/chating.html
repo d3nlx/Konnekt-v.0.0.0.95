@@ -133,25 +133,68 @@
       border: none;
     }
 
-    .contact {
-      padding: 12px;
+    .sidebar-middle-top-containder button:hover {
       cursor: pointer;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .contact:hover {
-      background: #eaeaea;
+      background-color: #0076f4;
     }
 
-    .contact.active-contact {
-      background-color: #007bff;
-      color: white;
-    }
-    .contact.active-contact:hover {
-      background-color: #006ae6;
-    }
+    .contact {
+              display: flex;
+              align-items: center;
+              padding: 10px;
+              border-bottom: 1px solid #eee;
+              cursor: pointer;
+            }
+            .contact:hover {
+              background: #f2f2f2;
+            }
+            .contact.active-contact {
+              background-color: #007bff;
+              color: white;
+            }
+            .contact.active-contact .contact-time {
+              color: white;
+            }
+            .contact.active-contact .contact-last {
+              color: rgba(255,255,255,0.8);
+            }
+
+            .contact-avatar {
+              width: 40px;
+              height: 40px;
+              border-radius: 50%;
+              color: #fff;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-weight: bold;
+              margin-right: 10px;
+              font-size: 18px;
+            }
+
+            .contact-info {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+            }
+
+            .contact-header-line {
+              display: flex;
+              justify-content: space-between;
+              font-weight: bold;
+            }
+
+            .contact-time {
+              font-size: 12px;
+              color: gray;
+            }
+
+            .contact-last {
+              font-size: 14px;
+              color: gray;
+              margin-top: 3px;
+            }
+
 
     /* Правая колонка (чат) */
     .sidebar-right {
@@ -320,6 +363,8 @@
         if (from === currentUserId) return;
         if (from !== currentChatId) return; // только активный чат
         appendMessage(false, message, id, timestamp);
+
+        updateContactPreview(from, message, timestamp);
       });
 
       socket.on('messages_deleted', ({ ids }) => {
@@ -327,45 +372,136 @@
           const msg = document.querySelector(`[data-id="${id}"]`);
           if (msg) msg.remove();
         });
+
+        // проверяем, есть ли ещё сообщения в текущем чате
+        const remainingMsgs = chatMessages.querySelectorAll('.message');
+        let lastMsgText = '';
+        let lastTimestamp = null;
+
+        if (remainingMsgs.length > 0) {
+          const lastMsg = remainingMsgs[remainingMsgs.length - 1];
+          lastMsgText = lastMsg.querySelector('span')?.textContent || '';
+
+          // 👉 берём timestamp напрямую из data-атрибута
+          if (lastMsg.dataset.timestamp) {
+            lastTimestamp = Number(lastMsg.dataset.timestamp); // тут точно ms-число
+          }
+        }
+
+        // обновляем список контактов (если есть время)
+        if (lastTimestamp) {
+          updateContactPreview(currentChatId, lastMsgText, lastTimestamp);
+        } else {
+          // если сообщений больше нет → очищаем превью
+          updateContactPreview(currentChatId, '', Date.now());
+        }
+
         selectedMessages.clear();
         exitDeleteMode();
       });
+
+
     }
 
     // =========================
     // 2. КОНТАКТЫ
     // =========================
+    // Функция генерации "постоянного случайного" цвета по id
+    function getColorForId(id) {
+      let hash = 0;
+      for (let i = 0; i < id.length; i++) {
+        hash = id.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const hue = hash % 360; // число от 0 до 360
+      return `hsl(${hue}, 70%, 50%)`;
+    }
+
     async function loadContacts() {
       const res = await fetch('/api/contacts', { credentials: 'include' });
-      const contacts = await res.json();
+      let contacts = await res.json();
 
+      // Сначала достанем последние сообщения для каждого контакта
+      const contactsWithMeta = [];
+      for (const c of contacts) {
+        let lastMsg = '';
+        let lastTime = '';
+        let lastTimestamp = 0;
+
+        try {
+          const msgRes = await fetch(`/api/messages/${c.id}?limit=1`, { credentials: 'include' });
+          const msgs = await msgRes.json();
+          if (msgs.length > 0) {
+            const last = msgs[msgs.length - 1];
+            lastMsg = last.message.length > 25 ? last.message.slice(0, 25) + '…' : last.message;
+            lastTimestamp = new Date(last.timestamp).getTime();
+            lastTime = new Date(last.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }
+        } catch (e) {
+          console.warn('Не удалось загрузить последнее сообщение для', c.displayName);
+        }
+
+        contactsWithMeta.push({
+          ...c,
+          lastMsg,
+          lastTime,
+          lastTimestamp
+        });
+      }
+
+      // Сортируем по времени последнего сообщения (новые сверху)
+      contactsWithMeta.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+
+      // Рендер
       contactsList.innerHTML = '';
-      contacts.forEach(c => {
+      for (const c of contactsWithMeta) {
+        const avatarLetter = c.name ? c.name.charAt(0).toUpperCase() : '?';
+        const avatarColor = getColorForId(c.id);
+
         const div = document.createElement('div');
         div.className = 'contact';
         div.dataset.id = c.id;
         div.innerHTML = `
-          <span>${c.displayName} (${c.phonenumber})</span>
-          <button class="delBtn">✕</button>
+          <div class="contact-avatar" style="background:${avatarColor}">${avatarLetter}</div>
+          <div class="contact-info">
+            <div class="contact-header-line">
+              <span class="contact-name">${c.displayName}</span>
+              <span class="contact-time">${c.lastTime || ''}</span>
+            </div>
+            <div class="contact-last">${c.lastMsg || 'Нет сообщений'}</div>
+          </div>
         `;
 
-        // открыть чат по клику на карточку
         div.onclick = () => openChat(c);
 
-        // удалить контакт (останавливаем всплытие, чтобы не открылся чат)
-        div.querySelector('.delBtn').onclick = async (e) => {
-          e.stopPropagation(); // <<< вот это важно
-          const confirmed = confirm(`Удалить ${c.displayName}?`);
-          if (!confirmed) return;
-          await fetch(`/api/contacts/${c.contactEntryId}`, {
-            method: 'DELETE',
-            credentials: 'include'
-          });
-          await loadContacts();
-        };
-
         contactsList.appendChild(div);
-      });
+      }
+    }
+
+
+    function updateContactPreview(contactId, lastMsg, timestamp) {
+      const contactEl = document.querySelector(`.contact[data-id="${contactId}"]`);
+      if (!contactEl) return;
+
+      const lastMsgEl = contactEl.querySelector('.contact-last');
+      const timeEl = contactEl.querySelector('.contact-time');
+
+      if (lastMsgEl) {
+        lastMsgEl.textContent = lastMsg
+          ? (lastMsg.length > 25 ? lastMsg.slice(0, 25) + '…' : lastMsg)
+          : 'Нет сообщений';
+      }
+
+      if (timeEl) {
+        if (timestamp) {
+          const ts = new Date(timestamp).getTime(); // примем ISO или число
+          timeEl.textContent = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else {
+          timeEl.textContent = ''; // если сообщений нет — пусто
+        }
+      }
+
+      // Поднять контакт вверх
+      contactsList.prepend(contactEl);
     }
 
     addBtn.onclick = async () => {
@@ -415,23 +551,26 @@
       div.className = `message ${isOwn ? 'outgoing' : 'incoming'}`;
       if (id) div.dataset.id = id;
 
+      // Нормализуем timestamp → миллисекунды (число)
+      const ts = (timestamp != null) ? new Date(timestamp).getTime() : null;
+      if (ts) div.dataset.timestamp = String(ts);
+
       // текст
       const textSpan = document.createElement('span');
       textSpan.textContent = text;
       div.appendChild(textSpan);
 
       // время
-      if (timestamp) {
-        const time = document.createElement('div');
-        const date = new Date(timestamp);
-        time.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        time.style.fontSize = '0.75em';
-        time.style.color = 'gray';
-        time.style.marginTop = '4px';
-        div.appendChild(time);
+      if (ts) {
+        const timeEl = document.createElement('div');
+        timeEl.textContent = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        timeEl.style.fontSize = '0.75em';
+        timeEl.style.color = 'gray';
+        timeEl.style.marginTop = '4px';
+        div.appendChild(timeEl);
       }
 
-      // если включен режим удаления
+      // режим удаления
       if (deleteMode) {
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
@@ -530,6 +669,15 @@
       if (icon) icon.remove();
     }
 
+    // Обработчик на Enter
+    messageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault(); // чтобы не добавлялась новая строка
+        sendBtn.click();    // кликаем кнопку отправки
+      }
+    });
+
+    // Кнопка отправки
     sendBtn.onclick = async () => {
       if (!currentChatId || !messageInput.value.trim()) return;
       const text = messageInput.value.trim();
@@ -542,6 +690,7 @@
 
       const data = await res.json();
       appendMessage(true, text, data.data?.id, data.data?.timestamp);
+      updateContactPreview(currentChatId, text, data.data?.timestamp);
 
       socket.emit('send_message', {
         to: currentChatId,
@@ -552,6 +701,7 @@
 
       messageInput.value = '';
     };
+
 
     document.querySelector('.js-open-profile-button').addEventListener('click', () => {
       window.location.href = 'profile.html'
