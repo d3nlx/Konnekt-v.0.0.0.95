@@ -96,4 +96,51 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Редактирование сообщения по ID
+router.put('/:id', async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+
+    const { id } = req.params;
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Message text required' });
+    }
+
+    const msg = await Message.findById(id);
+    if (!msg) return res.status(404).json({ error: 'Message not found' });
+
+    // проверяем автора
+    if (msg.sender.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Not allowed' });
+    }
+
+    msg.message = message;
+    await msg.save();
+
+    // ⚡ уведомим через socket.io (получаем io из app)
+    req.app.get('io').to(msg.receiver.toString()).emit('message_edited', {
+      id: msg._id,
+      message: msg.message,
+      timestamp: msg.timestamp,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        id: msg._id,
+        sender: msg.sender,
+        receiver: msg.receiver,
+        message: msg.message,
+        timestamp: msg.timestamp,
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 export default router;

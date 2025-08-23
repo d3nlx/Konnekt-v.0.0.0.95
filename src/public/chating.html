@@ -287,6 +287,21 @@
       cursor: pointer;
       margin-left: auto;
     }
+
+    .action-icon {
+      background: transparent;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 2px 6px;
+      margin: 0 3px; /* чуть меньше расстояние */
+    }
+
+    .action-icon:hover {
+      opacity: 0.7;
+    }
+
+
     .selected {
       background-color: rgba(255, 0, 0, 0.1) !important;
     }
@@ -349,6 +364,7 @@
     let socket = null;
     let deleteMode = false;
     let selectedMessages = new Set();
+    let editMessageId = null; // id редактируемого сообщения
 
     // =========================
     // 1. ПОЛЬЗОВАТЕЛЬ + СОКЕТ
@@ -365,6 +381,14 @@
         appendMessage(false, message, id, timestamp);
 
         updateContactPreview(from, message, timestamp);
+      });
+
+      socket.on('message_edited', ({ id, message, timestamp }) => {
+        const msgDiv = document.querySelector(`[data-id="${id}"]`);
+        if (msgDiv) {
+          msgDiv.querySelector('span').textContent = message;
+          updateContactPreview(currentChatId, message, timestamp);
+        }
       });
 
       socket.on('messages_deleted', ({ ids }) => {
@@ -595,79 +619,87 @@
     }
 
     chatMessages.addEventListener('click', (e) => {
-      if (e.target.classList.contains('message-checkbox')) return;
-
       const messageDiv = e.target.closest('.message');
       if (!messageDiv) return;
 
-      if (deleteMode) {
-        exitDeleteMode();
-        return;
+      const id = messageDiv.dataset.id;
+      if (!id) return;
+
+      // переключаем выделение
+      if (selectedMessages.has(id)) {
+        selectedMessages.delete(id);
+        messageDiv.classList.remove('selected');
+      } else {
+        selectedMessages.add(id);
+        messageDiv.classList.add('selected');
       }
 
-      deleteMode = true;
-
-      document.querySelectorAll('#chatMessages > .message').forEach((msgDiv) => {
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.className = 'message-checkbox';
-        checkbox.style.marginRight = '6px';
-        msgDiv.prepend(checkbox);
-
-        checkbox.addEventListener('change', () => {
-          const id = msgDiv.dataset.id;
-          if (!id) return;
-
-          if (checkbox.checked) {
-            selectedMessages.add(id);
-            msgDiv.classList.add('selected');
-          } else {
-            selectedMessages.delete(id);
-            msgDiv.classList.remove('selected');
-          }
-        });
-      });
-
-      showDeleteIcon();
+      // обновляем кнопки сверху
+      showActionIcons();
     });
 
-    function showDeleteIcon() {
-      // если уже есть иконка — не добавляем вторую
-      if (document.getElementById('delete-icon')) return;
 
-      const deleteIcon = document.createElement('button');
-      deleteIcon.id = 'delete-icon';
-      deleteIcon.innerHTML = '🗑️';
-      deleteIcon.title = 'Удалить сообщения';
+    function showActionIcons() {
+      // удаляем старые иконки
+      document.querySelectorAll('.action-icon').forEach(i => i.remove());
 
-      deleteIcon.addEventListener('click', async () => {
+      if (selectedMessages.size === 0) return;
+
+      // создаём контейнер для кнопок
+      const actionsContainer = document.createElement('div');
+      actionsContainer.className = 'actions-container';
+      actionsContainer.style.display = 'flex';
+      actionsContainer.style.gap = '6px'; // расстояние между кнопками
+
+      // ✏️ кнопка (слева)
+      if (selectedMessages.size === 1) {
+        const msgId = Array.from(selectedMessages)[0];
+        const msgDiv = document.querySelector(`[data-id="${msgId}"]`);
+
+        if (msgDiv && msgDiv.classList.contains('outgoing')) {
+          const editBtn = document.createElement('button');
+          editBtn.className = 'action-icon';
+          editBtn.textContent = '✏️';
+          editBtn.onclick = () => {
+            editMessageId = msgId;
+            const text = msgDiv.querySelector('span').textContent;
+            messageInput.value = text;
+            messageInput.focus();
+          };
+          actionsContainer.appendChild(editBtn);
+        }
+      }
+
+      // 🗑️ кнопка (справа)
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'action-icon';
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.onclick = async () => {
         for (const id of selectedMessages) {
           try {
             await fetch(`/api/messages/${id}`, { method: 'DELETE' });
           } catch (err) {
-            console.error(`Ошибка при удалении ${id}:`, err);
+            console.error(err);
           }
         }
-
-        socket.emit('delete_message', {
-          to: currentChatId,
-          ids: Array.from(selectedMessages),
-        });
-
+        socket.emit('delete_message', { to: currentChatId, ids: Array.from(selectedMessages) });
         exitDeleteMode();
-      });
+      };
+      actionsContainer.appendChild(deleteBtn);
 
-      document.getElementById('chatHeader').appendChild(deleteIcon);
+      chatHeader.appendChild(actionsContainer);
     }
+
+
+
 
     function exitDeleteMode() {
-      deleteMode = false;
       selectedMessages.clear();
-      document.querySelectorAll('.message-checkbox').forEach(cb => cb.remove());
       document.querySelectorAll('#chatMessages > .message').forEach(msgDiv => msgDiv.classList.remove('selected'));
-      const icon = document.getElementById('delete-icon');
-      if (icon) icon.remove();
+      document.querySelectorAll('.action-icon').forEach(i => i.remove());
+      editMessageId = null;
     }
+
 
     // Обработчик на Enter
     messageInput.addEventListener("keydown", (e) => {
@@ -679,25 +711,43 @@
 
     // Кнопка отправки
     sendBtn.onclick = async () => {
-      if (!currentChatId || !messageInput.value.trim()) return;
       const text = messageInput.value.trim();
+      if (!currentChatId || !text) return;
 
-      const res = await fetch('/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ receiverId: currentChatId, message: text }),
-      });
-
-      const data = await res.json();
-      appendMessage(true, text, data.data?.id, data.data?.timestamp);
-      updateContactPreview(currentChatId, text, data.data?.timestamp);
-
-      socket.emit('send_message', {
-        to: currentChatId,
-        message: text,
-        id: data.data?.id,
-        timestamp: data.data?.timestamp
-      });
+      if (editMessageId) {
+        // ✏️ редактируем
+        const res = await fetch(`/api/messages/${editMessageId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          const msgDiv = document.querySelector(`[data-id="${editMessageId}"]`);
+          if (msgDiv) {
+            msgDiv.querySelector('span').textContent = text;
+          }
+          updateContactPreview(currentChatId, text, data.data.timestamp);
+        }
+        editMessageId = null;
+        exitDeleteMode();
+      } else {
+        // 📩 новое сообщение
+        const res = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ receiverId: currentChatId, message: text }),
+        });
+        const data = await res.json();
+        appendMessage(true, text, data.data?.id, data.data?.timestamp);
+        updateContactPreview(currentChatId, text, data.data?.timestamp);
+        socket.emit('send_message', {
+          to: currentChatId,
+          message: text,
+          id: data.data?.id,
+          timestamp: data.data?.timestamp
+        });
+      }
 
       messageInput.value = '';
     };
