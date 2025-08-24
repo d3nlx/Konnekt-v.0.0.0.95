@@ -53,16 +53,19 @@ io.on('connection', (socket) => {
   socket.join(userId); // Подключение к своей комнате
 
   // Получение и отправка сообщений
-  socket.on('send_message', ({ to, message, id, timestamp }) => {
+  socket.on('send_message', ({ to, message, id, timestamp, replyTo, replyText, replyUser }) => {
   const payload = {
     from: userId,
     message,
     id,
     timestamp,
+    replyTo: replyTo || null,
+    replyText: replyText || null,
+    replyUser: replyUser || null
   };
 
   io.to(to).emit('new_message', payload);     // собеседнику
-  io.to(userId).emit('new_message', payload); // себе (если захочу отрисовать у себя тоже через сокет)
+  io.to(userId).emit('new_message', payload); // себе
 });
 
 

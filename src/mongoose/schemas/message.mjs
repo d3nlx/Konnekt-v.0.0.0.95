@@ -25,9 +25,17 @@ const MessageSchema = new mongoose.Schema({
     default: false
   },
   // новое поле: ссылка на сообщение, на которое отвечаем
-  replyTo: {
+    replyTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Message',
+    default: null
+  },
+  replyText: {
+    type: String,
+    default: null
+  },
+  replyUser: {
+    type: String,
     default: null
   }
 });

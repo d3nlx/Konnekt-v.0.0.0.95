@@ -386,13 +386,14 @@
       currentUserId = user._id;
 
       socket = io();
-      socket.on('new_message', ({ from, message, id, timestamp }) => {
+      socket.on('new_message', ({ from, message, id, timestamp, replyTo, replyText, replyUser }) => {
         if (from === currentUserId) return;
-        if (from !== currentChatId) return; // только активный чат
-        appendMessage(false, message, id, timestamp);
+        if (from !== currentChatId) return;
+        appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser);
 
         updateContactPreview(from, message, timestamp);
       });
+
 
       socket.on('message_edited', ({ id, message, timestamp }) => {
         const msgDiv = document.querySelector(`[data-id="${id}"]`);
@@ -597,7 +598,7 @@
       const ts = (timestamp != null) ? new Date(timestamp).getTime() : null;
       if (ts) div.dataset.timestamp = String(ts);
 
-      // если есть reply
+      // 🔁 если это ответ
       if (replyTo && replyText) {
         const replyDiv = document.createElement('div');
         replyDiv.style.fontSize = '0.8em';
@@ -605,16 +606,27 @@
         replyDiv.style.borderLeft = '3px solid #007bff';
         replyDiv.style.marginBottom = '4px';
         replyDiv.style.background = 'rgba(0,0,0,0.05)';
-        replyDiv.textContent = `${replyUser || 'User'}: ${replyText}`;
+        replyDiv.style.borderRadius = '6px';
+
+        const replyName = document.createElement('div');
+        replyName.style.fontWeight = 'bold';
+        replyName.textContent = replyUser || 'User';
+
+        const replyMsg = document.createElement('div');
+        replyMsg.style.color = '#555';
+        replyMsg.textContent = replyText.length > 40 ? replyText.slice(0, 40) + '…' : replyText;
+
+        replyDiv.appendChild(replyName);
+        replyDiv.appendChild(replyMsg);
         div.appendChild(replyDiv);
       }
 
-      // текст
+      // ✉️ сам текст сообщения
       const textSpan = document.createElement('span');
       textSpan.textContent = text;
       div.appendChild(textSpan);
 
-      // время
+      // ⏰ время
       if (ts) {
         const timeEl = document.createElement('div');
         timeEl.textContent = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -805,11 +817,19 @@
         const res = await fetch('/api/messages', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ receiverId: currentChatId, message: text, replyTo: replyToId }),
         });
         const data = await res.json();
 
-        appendMessage(true, text, data.data?.id, data.data?.timestamp, replyToId);
+        appendMessage(
+          true,
+          text,
+          data.data?.id,
+          data.data?.timestamp,
+          data.data?.replyTo,
+          data.data?.replyText,
+          data.data?.replyUser
+        );
         updateContactPreview(currentChatId, text, data.data?.timestamp);
 
         socket.emit('send_message', {
@@ -817,18 +837,19 @@
           message: text,
           id: data.data?.id,
           timestamp: data.data?.timestamp,
-          replyTo: replyToId
+          replyTo: data.data?.replyTo,
+          replyText: data.data?.replyText,
+          replyUser: data.data?.replyUser
         });
 
         // сброс reply
+        messageInput.value = '';
         replyToId = null;
         document.getElementById('replyPreview').style.display = 'none';
-        exitDeleteMode();
-      }
+      };
 
       messageInput.value = '';
     };
-
 
     document.querySelector('.js-open-profile-button').addEventListener('click', () => {
       window.location.href = 'profile.html'
