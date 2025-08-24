@@ -341,6 +341,11 @@
         <div class="chat-header" id="chatHeader">Choose your contact</div>
       </div>
       <div class="chat-messages" id="chatMessages"></div>
+      <!-- reply preview -->
+      <div id="replyPreview" style="display:none; border-top:1px solid #ccc; background:#f8f8f8; padding:5px; font-size:0.9em; color:#333; align-items:center; justify-content:space-between;">
+        <div id="replyText" style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+        <button id="cancelReplyBtn" style="background:none; border:none; cursor:pointer; font-size:16px;">❌</button>
+      </div>
       <div class="chat-input">
         <input type="text" id="messageInput" placeholder="Type your message...">
         <button id="sendBtn">Send</button>
@@ -365,6 +370,12 @@
     let deleteMode = false;
     let selectedMessages = new Set();
     let editMessageId = null; // id редактируемого сообщения
+    let replyToId = null;
+    document.getElementById('cancelReplyBtn').onclick = () => {
+      replyToId = null;
+      document.getElementById('replyPreview').style.display = 'none';
+      exitDeleteMode();
+    };
 
     // =========================
     // 1. ПОЛЬЗОВАТЕЛЬ + СОКЕТ
@@ -565,19 +576,38 @@
       const messages = await res.json();
       chatMessages.innerHTML = '';
       messages.forEach(m => {
-        appendMessage(m.sender === currentUserId, m.message, m.id, m.timestamp);
+        appendMessage(
+          m.sender === currentUserId,
+          m.message,
+          m.id,
+          m.timestamp,
+          m.replyTo,            // id ответа
+          m.replyText,          // текст на который отвечаем (надо отдавать с бэка!)
+          m.replyUser           // displayName автора (надо отдавать с бэка!)
+        );
       });
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    function appendMessage(isOwn, text, id = null, timestamp = null) {
+    function appendMessage(isOwn, text, id = null, timestamp = null, replyTo = null, replyText = null, replyUser = null) {
       const div = document.createElement('div');
       div.className = `message ${isOwn ? 'outgoing' : 'incoming'}`;
       if (id) div.dataset.id = id;
 
-      // Нормализуем timestamp → миллисекунды (число)
       const ts = (timestamp != null) ? new Date(timestamp).getTime() : null;
       if (ts) div.dataset.timestamp = String(ts);
+
+      // если есть reply
+      if (replyTo && replyText) {
+        const replyDiv = document.createElement('div');
+        replyDiv.style.fontSize = '0.8em';
+        replyDiv.style.padding = '4px 8px';
+        replyDiv.style.borderLeft = '3px solid #007bff';
+        replyDiv.style.marginBottom = '4px';
+        replyDiv.style.background = 'rgba(0,0,0,0.05)';
+        replyDiv.textContent = `${replyUser || 'User'}: ${replyText}`;
+        div.appendChild(replyDiv);
+      }
 
       // текст
       const textSpan = document.createElement('span');
@@ -592,26 +622,6 @@
         timeEl.style.color = 'gray';
         timeEl.style.marginTop = '4px';
         div.appendChild(timeEl);
-      }
-
-      // режим удаления
-      if (deleteMode) {
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.className = 'message-checkbox';
-        checkbox.style.marginRight = '6px';
-        div.prepend(checkbox);
-
-        checkbox.addEventListener('change', () => {
-          if (!id) return;
-          if (checkbox.checked) {
-            selectedMessages.add(id);
-            div.classList.add('selected');
-          } else {
-            selectedMessages.delete(id);
-            div.classList.remove('selected');
-          }
-        });
       }
 
       chatMessages.appendChild(div);
@@ -650,6 +660,40 @@
       actionsContainer.className = 'actions-container';
       actionsContainer.style.display = 'flex';
       actionsContainer.style.gap = '6px'; // расстояние между кнопками
+
+      // 🔁 кнопка "Ответить"
+      if (selectedMessages.size === 1) {
+        const msgId = Array.from(selectedMessages)[0];
+        const msgDiv = document.querySelector(`[data-id="${msgId}"]`);
+        if (msgDiv) {
+          const replyBtn = document.createElement('button');
+          replyBtn.className = 'action-icon';
+          replyBtn.textContent = '↩️';
+          replyBtn.title = 'Ответить';
+
+          replyBtn.onclick = () => {
+            // если уже открыт ответ на это же сообщение → закрыть
+            if (replyToId === msgId) {
+              replyToId = null;
+              document.getElementById('replyPreview').style.display = 'none';
+              exitDeleteMode();
+              return;
+            }
+
+            // иначе открыть превью для нового сообщения
+            const replyText = msgDiv.querySelector('span').textContent;
+            document.getElementById('replyText').textContent = replyText;
+            document.getElementById('replyPreview').style.display = 'flex';
+            replyToId = msgId;
+            messageInput.focus();
+
+            // сразу выходим из "режима выбора"
+            exitDeleteMode();
+          };
+
+          actionsContainer.appendChild(replyBtn);
+        }
+      }
 
       // 📋 кнопка (копировать)
       if (selectedMessages.size === 1) {
@@ -715,9 +759,6 @@
       chatHeader.appendChild(actionsContainer);
     }
 
-
-
-
     function exitDeleteMode() {
       selectedMessages.clear();
       document.querySelectorAll('#chatMessages > .message').forEach(msgDiv => msgDiv.classList.remove('selected'));
@@ -758,20 +799,31 @@
         exitDeleteMode();
       } else {
         // 📩 новое сообщение
+        const body = { receiverId: currentChatId, message: text };
+        if (replyToId) body.replyTo = replyToId;
+
         const res = await fetch('/api/messages', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ receiverId: currentChatId, message: text }),
+          body: JSON.stringify(body),
         });
         const data = await res.json();
-        appendMessage(true, text, data.data?.id, data.data?.timestamp);
+
+        appendMessage(true, text, data.data?.id, data.data?.timestamp, replyToId);
         updateContactPreview(currentChatId, text, data.data?.timestamp);
+
         socket.emit('send_message', {
           to: currentChatId,
           message: text,
           id: data.data?.id,
-          timestamp: data.data?.timestamp
+          timestamp: data.data?.timestamp,
+          replyTo: replyToId
         });
+
+        // сброс reply
+        replyToId = null;
+        document.getElementById('replyPreview').style.display = 'none';
+        exitDeleteMode();
       }
 
       messageInput.value = '';

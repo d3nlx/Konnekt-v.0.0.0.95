@@ -18,6 +18,17 @@ const MessageSchema = new mongoose.Schema({
   timestamp: {
     type: Date,
     default: Date.now
+  },
+  // новое поле: было ли сообщение отредактировано
+  edited: {
+    type: Boolean,
+    default: false
+  },
+  // новое поле: ссылка на сообщение, на которое отвечаем
+  replyTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Message',
+    default: null
   }
 });
 

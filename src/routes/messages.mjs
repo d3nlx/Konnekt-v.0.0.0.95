@@ -4,11 +4,12 @@ import { User } from '../mongoose/schemas/user.mjs';
 
 const router = express.Router();
 
+// 📌 ОТПРАВКА СООБЩЕНИЯ (с поддержкой replyTo)
 router.post('/', async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Not logged in' });
 
-    const { receiverId, message } = req.body;
+    const { receiverId, message, replyTo } = req.body;
 
     if (!receiverId || !message) {
       return res.status(400).json({ error: 'Receiver and message required' });
@@ -17,10 +18,17 @@ router.post('/', async (req, res) => {
     const receiver = await User.findById(receiverId);
     if (!receiver) return res.status(404).json({ error: 'Receiver not found' });
 
+    // replyTo — это ID сообщения, на которое отвечаем (может быть null)
+    let replyMsg = null;
+    if (replyTo) {
+      replyMsg = await Message.findById(replyTo);
+    }
+
     const newMessage = await Message.create({
       sender: req.user._id,
       receiver: receiverId,
       message,
+      replyTo: replyMsg ? replyMsg._id : null, // сохраним ссылку
     });
 
     res.status(201).json({
@@ -30,6 +38,11 @@ router.post('/', async (req, res) => {
         sender: req.user._id,
         receiver: receiverId,
         message: newMessage.message,
+        replyTo: replyMsg ? {
+          id: replyMsg._id,
+          message: replyMsg.message,
+          sender: replyMsg.sender,
+        } : null,
         timestamp: newMessage.timestamp
       }
     });
@@ -38,6 +51,7 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'Something went wrong' });
   }
 });
+
 
 
 // ✅ Получение сообщений (с поддержкой ?limit=N)
