@@ -651,6 +651,31 @@
       actionsContainer.style.display = 'flex';
       actionsContainer.style.gap = '6px'; // расстояние между кнопками
 
+      // 📋 кнопка (копировать)
+      if (selectedMessages.size === 1) {
+        const msgId = Array.from(selectedMessages)[0];
+        const msgDiv = document.querySelector(`[data-id="${msgId}"]`);
+        if (msgDiv) {
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'action-icon';
+          copyBtn.textContent = '📋';
+          copyBtn.title = 'Скопировать';
+
+          copyBtn.onclick = async () => {
+            const text = msgDiv.querySelector('span').textContent;
+            try {
+              await navigator.clipboard.writeText(text);
+              alert('Скопировано ✅');
+            } catch (err) {
+              console.error('Не удалось скопировать: ', err);
+            }
+            exitDeleteMode();
+          };
+
+          actionsContainer.appendChild(copyBtn);
+        }
+      }
+
       // ✏️ кнопка (слева)
       if (selectedMessages.size === 1) {
         const msgId = Array.from(selectedMessages)[0];
