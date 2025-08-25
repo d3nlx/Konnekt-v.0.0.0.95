@@ -78,7 +78,7 @@ router.get('/:contactId', async (req, res) => {
       query.limit(limit);
     }
 
-    
+
     let messages = await query;
 
     // так как сортировка -1 (от новых к старым), переворачиваем, чтобы вернуть в порядке от старых к новым
@@ -165,6 +165,25 @@ router.put('/:id', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+// Закрепить сообщение
+router.post('/:id/pin', async (req, res) => {
+  try {
+    const msg = await Message.findById(req.params.id);
+    if (!msg) return res.status(404).json({ error: 'Message not found' });
+
+    // сохраняем в user pinnedMessageId
+    await User.findByIdAndUpdate(req.user._id, {
+      pinnedMessageId: msg._id
+    });
+
+    res.json({ success: true, message: 'Pinned successfully', pinnedId: msg._id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 
 
 export default router;

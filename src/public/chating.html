@@ -339,6 +339,10 @@
     <div class="sidebar-right">
       <div class="sidebar-right-top-containder">
         <div class="chat-header" id="chatHeader">Choose your contact</div>
+          <div id="pinnedContainer" style="display:none; background:#fffae6; padding:5px; border-bottom:1px solid #ccc; font-size:0.9em;">
+            📌 <span id="pinnedText"></span>
+            <button id="unpinBtn" style="margin-left:10px; background:none; border:none; cursor:pointer;">❌</button>
+          </div>
       </div>
       <div class="chat-messages" id="chatMessages"></div>
       <!-- reply preview -->
@@ -391,14 +395,14 @@
       
 
       socket = io();
-      socket.on('new_message', ({ from, message, id, timestamp, replyTo, replyText, replyUser }) => {
+      socket.on('new_message', ({ from, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
         if (from === currentUserId) return;
         if (from !== currentChatId) return;
-        appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser);
+
+        appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom);
 
         updateContactPreview(from, message, timestamp);
       });
-
 
       socket.on('message_edited', ({ id, message, timestamp }) => {
         const msgDiv = document.querySelector(`[data-id="${id}"]`);
@@ -566,16 +570,37 @@
         for (const id of selectedMessages) {
           const msgDiv = document.querySelector(`[data-id="${id}"]`);
           if (!msgDiv) continue;
-          const text = msgDiv.querySelector('span').textContent;
 
+          const text = msgDiv.querySelector('span').textContent;
+          const senderId = msgDiv.dataset.sender;
+          let forwardedFrom;
+
+          if (senderId === currentUserId) {
+            forwardedFrom = currentUserDisplayName;
+          } else {
+            forwardedFrom = msgDiv.dataset.senderName || "Неизвестный";
+          }
+          
           await fetch('/api/messages', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               receiverId: contact.id,
               message: text,
-              forwardedFrom: currentUserDisplayName  // 👈 тут имя пересылающего
+              forwardedFrom
             }),
+          }).then(async res => {
+            const data = await res.json();
+            updateContactPreview(contact.id, text, data.data?.timestamp || Date.now());
+
+            // ⚡ вот это нужно добавить
+            socket.emit('send_message', {
+              to: contact.id,
+              message: text,
+              id: data.data?.id,
+              timestamp: data.data?.timestamp,
+              forwardedFrom
+            });
           });
         }
 
@@ -613,10 +638,19 @@
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    function appendMessage(isOwn, text, id = null, timestamp = null, replyTo = null, replyText = null, replyUser = null, forwardedFrom = null) {
+    function appendMessage(isOwn, text, id = null, timestamp = null, replyTo = null, replyText = null, replyUser = null, forwardedFrom = null, senderName = null) {
       const div = document.createElement('div');
       div.className = `message ${isOwn ? 'outgoing' : 'incoming'}`;
       if (id) div.dataset.id = id;
+
+      div.dataset.sender = isOwn ? currentUserId : currentChatId;
+
+      // ⚡ сохраняем имя автора
+      if (senderName) {
+        div.dataset.senderName = senderName;
+      } else {
+        div.dataset.senderName = isOwn ? currentUserDisplayName : (replyUser || "Unknown");
+      }
 
       const ts = (timestamp != null) ? new Date(timestamp).getTime() : null;
       if (ts) div.dataset.timestamp = String(ts);
@@ -715,6 +749,32 @@
       actionsContainer.className = 'actions-container';
       actionsContainer.style.display = 'flex';
       actionsContainer.style.gap = '6px'; // расстояние между кнопками
+
+      // 📌 закрепить сообщение
+      if (selectedMessages.size === 1) {
+        const msgId = Array.from(selectedMessages)[0];
+        const pinBtn = document.createElement('button');
+        pinBtn.className = 'action-icon';
+        pinBtn.textContent = '📌';
+        pinBtn.title = 'Закрепить';
+
+        pinBtn.onclick = async () => {
+          try {
+            await fetch(`/api/messages/${msgId}/pin`, { method: 'POST' });
+            const msgDiv = document.querySelector(`[data-id="${msgId}"]`);
+            if (msgDiv) {
+              const text = msgDiv.querySelector('span').textContent;
+              showPinnedMessage(text);
+            }
+          } catch (err) {
+            console.error(err);
+          }
+          exitDeleteMode();
+        };
+
+        actionsContainer.appendChild(pinBtn);
+      }
+
 
       // ✉️ Forward (доступно, если выделено хотя бы 1 сообщение)
       if (selectedMessages.size >= 1) {
@@ -837,6 +897,22 @@
       actionsContainer.appendChild(deleteBtn);
 
       chatHeader.appendChild(actionsContainer);
+    }
+
+    function showPinnedMessage(text) {
+      const pinned = document.getElementById('pinnedContainer');
+      const pinnedText = document.getElementById('pinnedText');
+      pinnedText.textContent = text.length > 40 ? text.slice(0, 40) + '…' : text;
+      pinned.style.display = 'block';
+
+      document.getElementById('unpinBtn').onclick = async () => {
+        try {
+          await fetch('/api/unpin', { method: 'POST' }); // можно сделать отдельный API
+          pinned.style.display = 'none';
+        } catch (err) {
+          console.error(err);
+        }
+      };
     }
 
     function exitDeleteMode() {

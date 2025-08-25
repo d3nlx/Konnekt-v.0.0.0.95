@@ -53,7 +53,7 @@ io.on('connection', (socket) => {
   socket.join(userId); // Подключение к своей комнате
 
   // Получение и отправка сообщений
-  socket.on('send_message', ({ to, message, id, timestamp, replyTo, replyText, replyUser }) => {
+  socket.on('send_message', ({ to, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
   const payload = {
     from: userId,
     message,
@@ -61,7 +61,8 @@ io.on('connection', (socket) => {
     timestamp,
     replyTo: replyTo || null,
     replyText: replyText || null,
-    replyUser: replyUser || null
+    replyUser: replyUser || null,
+    forwardedFrom: forwardedFrom || null  // ✅ теперь определён
   };
 
   io.to(to).emit('new_message', payload);     // собеседнику
