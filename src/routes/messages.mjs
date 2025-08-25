@@ -78,6 +78,7 @@ router.get('/:contactId', async (req, res) => {
       query.limit(limit);
     }
 
+    
     let messages = await query;
 
     // так как сортировка -1 (от новых к старым), переворачиваем, чтобы вернуть в порядке от старых к новым
