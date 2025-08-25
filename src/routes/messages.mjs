@@ -9,7 +9,7 @@ router.post('/', async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Not logged in' });
 
-    const { receiverId, message, replyTo } = req.body;
+    const { receiverId, message, replyTo, forwardedFrom } = req.body;
     if (!receiverId || !message) {
       return res.status(400).json({ error: 'Receiver and message required' });
     }
@@ -34,7 +34,8 @@ router.post('/', async (req, res) => {
       message,
       replyTo,
       replyText,
-      replyUser
+      replyUser,
+      forwardedFrom: forwardedFrom || null
     });
 
     res.status(201).json({
@@ -47,7 +48,8 @@ router.post('/', async (req, res) => {
         timestamp: newMessage.timestamp,
         replyTo,
         replyText,
-        replyUser
+        replyUser,
+        forwardedFrom
       }
     });
   } catch (err) {
@@ -89,7 +91,8 @@ router.get('/:contactId', async (req, res) => {
       timestamp: msg.timestamp,
       replyTo: msg.replyTo,
       replyText: msg.replyText,
-      replyUser: msg.replyUser
+      replyUser: msg.replyUser,
+      forwardedFrom: msg.forwardedFrom   // 👈 добавь это
     })));
   } catch (err) {
     console.error(err);

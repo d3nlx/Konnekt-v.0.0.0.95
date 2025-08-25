@@ -365,6 +365,7 @@
     const sendBtn = document.getElementById('sendBtn');
 
     let currentUserId = null;
+    let currentUserDisplayName = null;
     let currentChatId = null;
     let socket = null;
     let deleteMode = false;
@@ -376,6 +377,7 @@
       document.getElementById('replyPreview').style.display = 'none';
       exitDeleteMode();
     };
+    let forwardMode = false;
 
     // =========================
     // 1. ПОЛЬЗОВАТЕЛЬ + СОКЕТ
@@ -383,7 +385,10 @@
     async function initUser() {
       const res = await fetch('/api/profile');
       const user = await res.json();
-      currentUserId = user._id;
+      currentUserId = user._id;  
+      currentUserDisplayName = user.displayName;
+
+      
 
       socket = io();
       socket.on('new_message', ({ from, message, id, timestamp, replyTo, replyText, replyUser }) => {
@@ -557,20 +562,37 @@
     // 3. ЧАТ
     // =========================
     async function openChat(contact) {
+      if (forwardMode && selectedMessages.size > 0) {
+        for (const id of selectedMessages) {
+          const msgDiv = document.querySelector(`[data-id="${id}"]`);
+          if (!msgDiv) continue;
+          const text = msgDiv.querySelector('span').textContent;
+
+          await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              receiverId: contact.id,
+              message: text,
+              forwardedFrom: currentUserDisplayName  // 👈 тут имя пересылающего
+            }),
+          });
+        }
+
+        forwardMode = false;
+        exitDeleteMode();
+      }
+
+      // стандартный переход в чат
       currentChatId = contact.id;
       chatHeader.textContent = `Chat with ${contact.displayName}`;
-
-      // Снятие выделения у всех
-      document.querySelectorAll('.contact').forEach(el => {
-        el.classList.remove('active-contact');
-      });
-
-      // Выделение текущего
+      document.querySelectorAll('.contact').forEach(el => el.classList.remove('active-contact'));
       const activeEl = document.querySelector(`.contact[data-id="${contact.id}"]`);
+      
       if (activeEl) activeEl.classList.add('active-contact');
-
       await loadMessages(contact.id);
     }
+
 
     async function loadMessages(contactId) {
       const res = await fetch(`/api/messages/${contactId}`);
@@ -584,19 +606,40 @@
           m.timestamp,
           m.replyTo,            // id ответа
           m.replyText,          // текст на который отвечаем (надо отдавать с бэка!)
-          m.replyUser           // displayName автора (надо отдавать с бэка!)
+          m.replyUser,          // displayName автора (надо отдавать с бэка!)
+          m.forwardedFrom           
         );
       });
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    function appendMessage(isOwn, text, id = null, timestamp = null, replyTo = null, replyText = null, replyUser = null) {
+    function appendMessage(isOwn, text, id = null, timestamp = null, replyTo = null, replyText = null, replyUser = null, forwardedFrom = null) {
       const div = document.createElement('div');
       div.className = `message ${isOwn ? 'outgoing' : 'incoming'}`;
       if (id) div.dataset.id = id;
 
       const ts = (timestamp != null) ? new Date(timestamp).getTime() : null;
       if (ts) div.dataset.timestamp = String(ts);
+
+      // 🔹 пересланное сообщение (как reply-дизайн)
+      if (forwardedFrom) {
+        const fwdDiv = document.createElement('div');
+        fwdDiv.style.fontSize = '0.8em';
+        fwdDiv.style.padding = '4px 8px';
+        fwdDiv.style.borderLeft = '3px solid #007bff';
+        fwdDiv.style.marginBottom = '4px';
+        fwdDiv.style.background = 'rgba(0,0,0,0.05)';
+        fwdDiv.style.borderRadius = '6px';
+
+        const fwdName = document.createElement('div');
+        fwdName.style.fontWeight = 'bold';
+        fwdName.textContent = `Forwarded from: ${forwardedFrom}`;
+
+        fwdDiv.appendChild(fwdName);
+        div.appendChild(fwdDiv);
+      }
+
+
 
       // 🔁 если это ответ
       if (replyTo && replyText) {
@@ -672,6 +715,31 @@
       actionsContainer.className = 'actions-container';
       actionsContainer.style.display = 'flex';
       actionsContainer.style.gap = '6px'; // расстояние между кнопками
+
+      // ✉️ Forward (доступно, если выделено хотя бы 1 сообщение)
+      if (selectedMessages.size >= 1) {
+        const forwardBtn = document.createElement('button');
+        forwardBtn.className = 'action-icon';
+        forwardBtn.textContent = '📤';
+        forwardBtn.title = 'Переслать';
+
+        forwardBtn.onclick = () => {
+          forwardMode = true;
+          // очищаем все кнопки кроме Cancel
+          document.querySelectorAll('.action-icon').forEach(i => i.remove());
+
+          const cancelBtn = document.createElement('button');
+          cancelBtn.className = 'action-icon';
+          cancelBtn.textContent = '❌ Cancel';
+          cancelBtn.onclick = () => {
+            forwardMode = false;
+            exitDeleteMode();
+          };
+          chatHeader.appendChild(cancelBtn);
+        };
+
+        actionsContainer.appendChild(forwardBtn);
+      }
 
       // 🔁 кнопка "Ответить"
       if (selectedMessages.size === 1) {

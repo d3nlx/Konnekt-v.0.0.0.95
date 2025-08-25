@@ -37,7 +37,10 @@ const MessageSchema = new mongoose.Schema({
   replyUser: {
     type: String,
     default: null
-  }
+  },
+  forwardedFrom: { 
+    type: String 
+  } // 👈 имя того, кто переслал
 });
 
 export const Message = mongoose.model('Message', MessageSchema);
