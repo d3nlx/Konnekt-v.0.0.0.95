@@ -62,44 +62,35 @@ router.post('/', async (req, res) => {
 // ✅ Получение сообщений (с поддержкой ?limit=N)
 router.get('/:contactId', async (req, res) => {
   try {
-    if (!req.user) return res.status(401).json({ error: 'Not logged in' });
-
     const contactId = req.params.contactId;
-    const limit = parseInt(req.query.limit, 10) || 0; // если нет ?limit=, то 0 (без лимита)
 
-    const query = Message.find({
+    const messages = await Message.find({
       $or: [
         { sender: req.user._id, receiver: contactId },
         { sender: contactId, receiver: req.user._id }
       ]
-    }).sort({ timestamp: -1 }); // последние сверху
-
-    if (limit > 0) {
-      query.limit(limit);
-    }
-
-
-    let messages = await query;
-
-    // так как сортировка -1 (от новых к старым), переворачиваем, чтобы вернуть в порядке от старых к новым
-    messages = messages.reverse();
+    })
+      .sort({ timestamp: 1 })
+      .populate('sender', 'displayName'); // 👈 подгружаем имя отправителя
 
     res.json(messages.map(msg => ({
       id: msg._id,
-      sender: msg.sender,
+      sender: msg.sender._id,
+      senderName: msg.sender.displayName,   // 👈 имя добавляем сюда
       receiver: msg.receiver,
       message: msg.message,
       timestamp: msg.timestamp,
       replyTo: msg.replyTo,
       replyText: msg.replyText,
       replyUser: msg.replyUser,
-      forwardedFrom: msg.forwardedFrom   // 👈 добавь это
+      forwardedFrom: msg.forwardedFrom
     })));
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Something went wrong' });
+    console.error("Error fetching messages:", err);
+    res.status(500).json({ error: "Failed to load messages" });
   }
 });
+
 
 // Удаление сообщения по ID
 router.delete('/:id', async (req, res) => {

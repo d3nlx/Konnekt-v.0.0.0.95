@@ -632,7 +632,8 @@
           m.replyTo,            // id ответа
           m.replyText,          // текст на который отвечаем (надо отдавать с бэка!)
           m.replyUser,          // displayName автора (надо отдавать с бэка!)
-          m.forwardedFrom           
+          m.forwardedFrom,
+          m.senderName           
         );
       });
       chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -649,7 +650,7 @@
       if (senderName) {
         div.dataset.senderName = senderName;
       } else {
-        div.dataset.senderName = isOwn ? currentUserDisplayName : (replyUser || "Unknown");
+        div.dataset.senderName = isOwn ? currentUserDisplayName : "Unknown";
       }
 
       const ts = (timestamp != null) ? new Date(timestamp).getTime() : null;
