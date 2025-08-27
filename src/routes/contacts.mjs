@@ -1,120 +1,56 @@
-import express from 'express'; 
-import { Contact } from '../mongoose/schemas/contact.mjs';
-import { User } from '../mongoose/schemas/user.mjs';
+import express from "express";
+import { User } from "../mongoose/schemas/user.mjs";
 
 const router = express.Router();
 
-// GET /api/contacts — Получить список контактов текущего пользователя
-router.get('/', async (req, res) => {
+// ✅ вернуть только контакты текущего юзера
+router.get("/", async (req, res) => {
   try {
-    if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+    if (!req.user) return res.status(401).json({ error: "Not logged in" });
 
-    const contacts = await Contact.find({ owner: req.user._id }).populate('contact', 'name phonenumber displayName');
+    const me = await User.findById(req.user._id).populate("contacts", "displayName phone");
+    if (!me) return res.status(404).json({ error: "User not found" });
 
-    // 👉 Временный лог всех контактов с populate
-    console.log('Контакты с populate:');
-    console.log(JSON.stringify(contacts, null, 2));
-
-    res.json(contacts.map(c => ({
-      id: c.contact?._id,  // Используем опциональную цепочку на всякий случай
-      contactEntryId: c._id,
-      name: c.contact?.name,
-      phonenumber: c.contact?.phonenumber,
-      displayName: c.contact?.displayName,
-    })));
+    res.json(
+      me.contacts.map(c => ({
+        id: c._id.toString(),
+        displayName: c.displayName || c.username || c.phone || "Без имени"
+      }))
+    );
   } catch (err) {
-    console.error('Ошибка получения контактов:', err);
-    res.status(500).json({ error: 'Something went wrong' });
+    console.error(err);
+    res.status(500).json({ error: "Failed to load contacts" });
   }
 });
 
-
-// POST /api/contacts — Найти пользователя и добавить в контакты
-router.post('/', async (req, res) => {
+// ✅ добавить нового контакта (по имени или телефону)
+router.post("/", async (req, res) => {
   try {
-    if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+    if (!req.user) return res.status(401).json({ error: "Not logged in" });
 
-    const { query } = req.body; // query может быть номер или displayName
+    const { query } = req.body;
+    if (!query) return res.status(400).json({ error: "Query required" });
 
-    if (!query) {
-      return res.status(400).json({ error: 'No search query provided' });
-    }
-
-    // Поиск по номеру или displayName
-    let foundUser;
-
-    if (!isNaN(query)) {
-      // если query — это число или строка, которую можно превратить в число
-      foundUser = await User.findOne({ phonenumber: Number(query) });
-    } else {
-      // если это текст — ищем по displayName
-      foundUser = await User.findOne({ displayName: query });
-    }
-
-    if (!foundUser) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Нельзя добавить себя в контакты
-    if (foundUser._id.equals(req.user._id)) {
-      return res.status(400).json({ error: 'You cannot add yourself' });
-    }
-
-    // Проверим, уже ли контакт есть
-    const alreadyContact = await Contact.findOne({
-      owner: req.user._id,
-      contact: foundUser._id,
+    // ищем по displayName или phone
+    const user = await User.findOne({
+      $or: [{ displayName: query }, { phone: query }]
     });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-    if (alreadyContact) {
-      return res.status(400).json({ error: 'User already in contacts' });
+    // добавляем только если ещё нет
+    const me = await User.findById(req.user._id);
+    if (!me.contacts.includes(user._id)) {
+      me.contacts.push(user._id);
+      await me.save();
     }
 
-    // Добавление нового контакта
-    const newContact = await Contact.create({
-      owner: req.user._id,
-      contact: foundUser._id,
+    res.json({
+      id: user._id.toString(),
+      displayName: user.displayName || user.username || user.phone
     });
-
-    res.status(201).json({
-      message: 'Contact added successfully',
-      contact: {
-        id: newContact._id,
-        name: foundUser.name,
-        phonenumber: foundUser.phonenumber,
-        displayName: foundUser.displayName,
-      }
-    });
-
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Something went wrong' });
-  }
-});
-
-// DELETE /api/contacts/:id — Удалить контакт по ID
-router.delete('/:id', async (req, res) => {
-  try {
-    if (!req.user) return res.status(401).json({ error: 'Not logged in' });
-
-    const contactId = req.params.id;
-
-    const contact = await Contact.findOne({
-      _id: contactId,
-      owner: req.user._id
-    });
-
-    if (!contact) {
-      return res.status(404).json({ error: 'Contact not found' });
-    }
-
-    await Contact.deleteOne({ _id: contactId });
-
-    res.json({ message: 'Contact deleted successfully' });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Something went wrong' });
+    res.status(500).json({ error: "Failed to add contact" });
   }
 });
 

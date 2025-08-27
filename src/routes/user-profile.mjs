@@ -25,7 +25,7 @@ router.patch('/api/profile', async (req, res) => {
 
   if (name) req.user.name = name;
   if (displayName) req.user.displayName = displayName;
-  if (phonenumber) req.user.phonenumber = phonenumber;
+  if (phonenumber) req.user.phonenumber = String(phonenumber);
 
   if (password) {
     const saltRounds = 10;

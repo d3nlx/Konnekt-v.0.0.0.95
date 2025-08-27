@@ -139,62 +139,61 @@
     }
 
     .contact {
-              display: flex;
-              align-items: center;
-              padding: 10px;
-              border-bottom: 1px solid #eee;
-              cursor: pointer;
-            }
-            .contact:hover {
-              background: #f2f2f2;
-            }
-            .contact.active-contact {
-              background-color: #007bff;
-              color: white;
-            }
-            .contact.active-contact .contact-time {
-              color: white;
-            }
-            .contact.active-contact .contact-last {
-              color: rgba(255,255,255,0.8);
-            }
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+    .contact:hover {
+      background: #f2f2f2;
+    }
+    .contact.active-contact {
+      background-color: #007bff;
+      color: white;
+    }
+    .contact.active-contact .contact-time {
+      color: white;
+    }
+    .contact.active-contact .contact-last {
+      color: rgba(255,255,255,0.8);
+    }
 
-            .contact-avatar {
-              width: 40px;
-              height: 40px;
-              border-radius: 50%;
-              color: #fff;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-weight: bold;
-              margin-right: 10px;
-              font-size: 18px;
-            }
+    .contact-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 10px;
+      font-size: 18px;
+    }
 
-            .contact-info {
-              flex: 1;
-              display: flex;
-              flex-direction: column;
-            }
+    .contact-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
 
-            .contact-header-line {
-              display: flex;
-              justify-content: space-between;
-              font-weight: bold;
-            }
+    .contact-header-line {
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+    }
 
-            .contact-time {
-              font-size: 12px;
-              color: gray;
-            }
+    .contact-time {
+      font-size: 12px;
+      color: gray;
+    }
 
-            .contact-last {
-              font-size: 14px;
-              color: gray;
-              margin-top: 3px;
-            }
-
+    .contact-last {
+      font-size: 14px;
+      color: gray;
+      margin-top: 3px;
+    }
 
     /* Правая колонка (чат) */
     .sidebar-right {
@@ -301,6 +300,44 @@
       opacity: 0.7;
     }
 
+    #pinnedContainer{
+      background:#ffffff;
+      border-bottom:1px solid #ffffff;
+      font-size:0.9em;
+      padding:6px 8px;
+      display:flex;               
+      align-items:center;
+      gap:8px;
+    }
+
+    #pinnedContainer { cursor: pointer; }
+    #pinnedContainer .pinned-left { cursor: pointer; min-width: 0; }
+
+    .pinned-highlight {
+      background-color: rgba(255, 255, 0, 0.4) !important;
+      transition: background-color 1.5s ease;
+    }
+
+    #pinnedContainer .pinned-left{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      flex:1;                     
+      min-width:0;
+    }
+    #pinnedText{
+      flex:1;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;      
+    }
+    #unpinBtn{
+      background:none;
+      border:none;
+      cursor:pointer;
+      font-size:16px;
+      padding:4px;
+    }
 
     .selected {
       background-color: rgba(255, 0, 0, 0.1) !important;
@@ -339,10 +376,10 @@
     <div class="sidebar-right">
       <div class="sidebar-right-top-containder">
         <div class="chat-header" id="chatHeader">Choose your contact</div>
-          <div id="pinnedContainer" style="display:none; background:#fffae6; padding:5px; border-bottom:1px solid #ccc; font-size:0.9em;">
-            📌 <span id="pinnedText"></span>
-            <button id="unpinBtn" style="margin-left:10px; background:none; border:none; cursor:pointer;">❌</button>
-          </div>
+          <div id="pinnedContainer" style="display:none">
+            <div class="pinned-left">📌 <span id="pinnedText"></span></div>
+            <button id="unpinBtn" aria-label="Unpin">❌</button>
+        </div>
       </div>
       <div class="chat-messages" id="chatMessages"></div>
       <!-- reply preview -->
@@ -468,13 +505,16 @@
       // Сначала достанем последние сообщения для каждого контакта
       const contactsWithMeta = [];
       for (const c of contacts) {
+        const contactId = c.id || c._id;   // 👈 тут фиксим
+
         let lastMsg = '';
         let lastTime = '';
         let lastTimestamp = 0;
 
         try {
-          const msgRes = await fetch(`/api/messages/${c.id}?limit=1`, { credentials: 'include' });
-          const msgs = await msgRes.json();
+          const msgRes = await fetch(`/api/messages/${contactId}?limit=1`, { credentials: 'include' });
+          const data = await msgRes.json();
+          const msgs = data.messages || [];
           if (msgs.length > 0) {
             const last = msgs[msgs.length - 1];
             lastMsg = last.message.length > 25 ? last.message.slice(0, 25) + '…' : last.message;
@@ -487,6 +527,7 @@
 
         contactsWithMeta.push({
           ...c,
+          id: contactId,   // 👈 сохраняем единое поле id
           lastMsg,
           lastTime,
           lastTimestamp
@@ -499,7 +540,9 @@
       // Рендер
       contactsList.innerHTML = '';
       for (const c of contactsWithMeta) {
-        const avatarLetter = c.name ? c.name.charAt(0).toUpperCase() : '?';
+        const avatarLetter = c.displayName 
+          ? c.displayName.charAt(0).toUpperCase() 
+          : '?';
         const avatarColor = getColorForId(c.id);
 
         const div = document.createElement('div');
@@ -621,21 +664,30 @@
 
     async function loadMessages(contactId) {
       const res = await fetch(`/api/messages/${contactId}`);
-      const messages = await res.json();
+      const data = await res.json();   // { pinned, messages }
+
+      if (data.pinned) {
+        // передаём и текст и id закреплённого сообщения
+        showPinnedMessage(data.pinned.message, data.pinned.id);
+      } else {
+        document.getElementById('pinnedContainer').style.display = 'none';
+      }
+
       chatMessages.innerHTML = '';
-      messages.forEach(m => {
+      data.messages.forEach(m => {
         appendMessage(
           m.sender === currentUserId,
           m.message,
           m.id,
           m.timestamp,
-          m.replyTo,            // id ответа
-          m.replyText,          // текст на который отвечаем (надо отдавать с бэка!)
-          m.replyUser,          // displayName автора (надо отдавать с бэка!)
+          m.replyTo,
+          m.replyText,
+          m.replyUser,
           m.forwardedFrom,
-          m.senderName           
+          m.senderName
         );
       });
+
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
@@ -900,21 +952,53 @@
       chatHeader.appendChild(actionsContainer);
     }
 
-    function showPinnedMessage(text) {
-      const pinned = document.getElementById('pinnedContainer');
-      const pinnedText = document.getElementById('pinnedText');
-      pinnedText.textContent = text.length > 40 ? text.slice(0, 40) + '…' : text;
-      pinned.style.display = 'block';
+    function showPinnedMessage(text, msgId) {
+      const container = document.getElementById('pinnedContainer');
+      const pinnedTextEl = document.getElementById('pinnedText');
+      
+      pinnedTextEl.textContent = text;
+      container.style.display = 'flex';
 
-      document.getElementById('unpinBtn').onclick = async () => {
-        try {
-          await fetch('/api/unpin', { method: 'POST' }); // можно сделать отдельный API
-          pinned.style.display = 'none';
-        } catch (err) {
-          console.error(err);
-        }
+      // 💾 сохраняем ID закреплённого сообщения
+      container.dataset.pinnedId = msgId;
+
+      // При клике скроллим к закреплённому сообщению
+      container.onclick = () => {
+        scrollToMessage(container.dataset.pinnedId);
+      };
+
+      document.getElementById('unpinBtn').onclick = async (e) => {
+        e.stopPropagation();
+        container.style.display = 'none';
+        container.dataset.pinnedId = "";
+        await fetch(`/api/messages/${msgId}/unpin`, { method: 'POST' });
       };
     }
+
+
+    async function scrollToMessage(msgId) {
+      if (!msgId) return;
+      let el = document.querySelector(`[data-id="${msgId}"]`);
+
+      if (!el) {
+        if (currentChatId) {
+          await loadMessages(currentChatId);
+          await new Promise(r => setTimeout(r, 60));
+          el = document.querySelector(`[data-id="${msgId}"]`);
+        }
+      }
+      if (!el) return;
+
+      // плавный скролл
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // подсветка только цветом
+      el.classList.add('pinned-highlight');
+      setTimeout(() => {
+        el.classList.remove('pinned-highlight');
+      }, 1500);
+    }
+
 
     function exitDeleteMode() {
       selectedMessages.clear();
@@ -922,7 +1006,6 @@
       document.querySelectorAll('.action-icon').forEach(i => i.remove());
       editMessageId = null;
     }
-
 
     // Обработчик на Enter
     messageInput.addEventListener("keydown", (e) => {

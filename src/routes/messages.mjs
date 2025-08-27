@@ -73,18 +73,30 @@ router.get('/:contactId', async (req, res) => {
       .sort({ timestamp: 1 })
       .populate('sender', 'displayName'); // 👈 подгружаем имя отправителя
 
-    res.json(messages.map(msg => ({
-      id: msg._id,
-      sender: msg.sender._id,
-      senderName: msg.sender.displayName,   // 👈 имя добавляем сюда
-      receiver: msg.receiver,
-      message: msg.message,
-      timestamp: msg.timestamp,
-      replyTo: msg.replyTo,
-      replyText: msg.replyText,
-      replyUser: msg.replyUser,
-      forwardedFrom: msg.forwardedFrom
-    })));
+    const pinned = messages.find(m => m.pinned);
+
+    res.json({
+      pinned: pinned ? {
+        id: pinned._id,
+        sender: pinned.sender._id,
+        senderName: pinned.sender.displayName,
+        receiver: pinned.receiver,
+        message: pinned.message,
+        timestamp: pinned.timestamp
+      } : null,
+      messages: messages.map(msg => ({
+        id: msg._id,
+        sender: msg.sender._id,
+        senderName: msg.sender.displayName,
+        receiver: msg.receiver,
+        message: msg.message,
+        timestamp: msg.timestamp,
+        replyTo: msg.replyTo,
+        replyText: msg.replyText,
+        replyUser: msg.replyUser,
+        forwardedFrom: msg.forwardedFrom
+      }))
+    });
   } catch (err) {
     console.error("Error fetching messages:", err);
     res.status(500).json({ error: "Failed to load messages" });
@@ -158,23 +170,44 @@ router.put('/:id', async (req, res) => {
 });
 
 // Закрепить сообщение
+// 📌 Закрепить сообщение
 router.post('/:id/pin', async (req, res) => {
   try {
-    const msg = await Message.findById(req.params.id);
-    if (!msg) return res.status(404).json({ error: 'Message not found' });
+    const msgId = req.params.id;
+    const message = await Message.findById(msgId);
+    if (!message) return res.status(404).json({ error: 'Message not found' });
 
-    // сохраняем в user pinnedMessageId
-    await User.findByIdAndUpdate(req.user._id, {
-      pinnedMessageId: msg._id
-    });
+    // сначала снимаем пин со всех сообщений в этом чате
+    await Message.updateMany(
+      {
+        $or: [
+          { sender: message.sender, receiver: message.receiver },
+          { sender: message.receiver, receiver: message.sender }
+        ],
+        pinned: true
+      },
+      { $set: { pinned: false } }
+    );
 
-    res.json({ success: true, message: 'Pinned successfully', pinnedId: msg._id });
+    // ставим пин на текущее
+    message.pinned = true;
+    await message.save();
+
+    res.json({ success: true, message: message });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-
+// ❌ снять закреп
+router.post('/unpin', async (req, res) => {
+  try {
+    await Message.updateMany({ pinned: true }, { $set: { pinned: false } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 export default router;

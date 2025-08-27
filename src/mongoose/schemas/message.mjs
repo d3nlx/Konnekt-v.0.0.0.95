@@ -40,7 +40,10 @@ const MessageSchema = new mongoose.Schema({
   },
   forwardedFrom: { 
     type: String 
-  } // 👈 имя того, кто переслал
+  }, // 👈 имя того, кто переслал
+  pinned: {
+     type: Boolean, default: false 
+  }
 });
 
 export const Message = mongoose.model('Message', MessageSchema);

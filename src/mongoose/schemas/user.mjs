@@ -6,7 +6,7 @@ const UserSchema = new mongoose.Schema({
     required: true,
   },
   phonenumber: {
-    type: mongoose.Schema.Types.Number,
+    type: mongoose.Schema.Types.String,
     required: true,
     unique: true,
   },
@@ -19,6 +19,9 @@ const UserSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.String,
     required: true,
   },
+
+  contacts: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
+  
 });
 
 export const User = mongoose.model('User', UserSchema)
