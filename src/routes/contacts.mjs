@@ -25,33 +25,29 @@ router.get("/", async (req, res) => {
 
 // ✅ добавить нового контакта (по имени или телефону)
 router.post("/", async (req, res) => {
-  try {
-    if (!req.user) return res.status(401).json({ error: "Not logged in" });
+  if (!req.user) return res.status(401).json({ error: "Not logged in" });
 
-    const { query } = req.body;
-    if (!query) return res.status(400).json({ error: "Query required" });
+  const { id, query } = req.body;
+  let user;
 
-    // ищем по displayName или phone
-    const user = await User.findOne({
+  if (id) {
+    user = await User.findById(id);
+  } else if (query) {
+    user = await User.findOne({
       $or: [{ displayName: query }, { phone: query }]
     });
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    // добавляем только если ещё нет
-    const me = await User.findById(req.user._id);
-    if (!me.contacts.includes(user._id)) {
-      me.contacts.push(user._id);
-      await me.save();
-    }
-
-    res.json({
-      id: user._id.toString(),
-      displayName: user.displayName || user.username || user.phone
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to add contact" });
   }
+
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  const me = await User.findById(req.user._id);
+  const already = me.contacts.some(c => c.toString() === user._id.toString());
+  if (!already) {
+    me.contacts.push(user._id);
+    await me.save();
+  }
+
+  res.json({ id: user._id.toString(), displayName: user.displayName });
 });
 
 export default router;

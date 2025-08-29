@@ -62,12 +62,16 @@ io.on('connection', (socket) => {
     replyTo: replyTo || null,
     replyText: replyText || null,
     replyUser: replyUser || null,
-    forwardedFrom: forwardedFrom || null  // ✅ теперь определён
+    forwardedFrom: forwardedFrom || null
   };
 
   io.to(to).emit('new_message', payload);     // собеседнику
   io.to(userId).emit('new_message', payload); // себе
+
+  // ⚡ событие для авто-обновления контактов
+  io.to(to).emit('contact_added', { from: userId });
 });
+
 
 
   socket.on('delete_message', ({ to, ids }) => {

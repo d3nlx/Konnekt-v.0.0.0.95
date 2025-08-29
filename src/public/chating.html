@@ -432,14 +432,46 @@
       
 
       socket = io();
-      socket.on('new_message', ({ from, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
+      socket.on('new_message', async ({ from, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
         if (from === currentUserId) return;
-        if (from !== currentChatId) return;
 
-        appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom);
+        let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
+          if (!contactEl) {
+            try {
+              await fetch('/api/contacts', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: from })
+              });
+              await loadContacts();
+            } catch (e) {
+              console.error("Не удалось добавить новый контакт", e);
+            }
+          }
+
+
+        if (from === currentChatId) {
+          appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom);
+        }
 
         updateContactPreview(from, message, timestamp);
       });
+
+      socket.on('contact_added', async ({ from }) => {
+        try {
+          await fetch('/api/contacts', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: from })
+          });
+          await loadContacts();
+        } catch (e) {
+          console.error("Не удалось обновить список контактов", e);
+        }
+      });
+
 
       socket.on('message_edited', ({ id, message, timestamp }) => {
         const msgDiv = document.querySelector(`[data-id="${id}"]`);
