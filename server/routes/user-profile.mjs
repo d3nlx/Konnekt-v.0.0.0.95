@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from 'bcrypt';
-import { User } from '../mongoose/schemas/user.mjs'; // <-- Подключаем твою модель
+import { User } from '../models/user.mjs';
 
 const router = Router();
 

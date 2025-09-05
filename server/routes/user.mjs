@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { User } from '../mongoose/schemas/user.mjs'; // поправь путь, если надо
+import { User } from '../models/user.mjs'; // поправь путь, если надо
 
 const router = Router();
 

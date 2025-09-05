@@ -8,10 +8,10 @@ import { Server } from 'socket.io';
 import sharedSession from 'express-socket.io-session';
 import sessionMiddleware from './session.js';
 
-import routes from './routes/index.mjs';
-import contactsRoutes from './routes/contacts.mjs';
-import messagesRouter from './routes/messages.mjs';
-import './strategies/local-strategy.mjs';
+import routes from '../src/routes/index.mjs';
+import contactsRoutes from '../src/routes/contacts.mjs';
+import messagesRouter from '../src/routes/messages.mjs';
+import '../src/strategies/local-strategy.mjs';
 
 const app = express();
 const server = http.createServer(app);

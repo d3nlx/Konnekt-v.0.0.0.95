@@ -1,6 +1,6 @@
 import express from 'express';
-import { Message } from '../mongoose/schemas/message.mjs';
-import { User } from '../mongoose/schemas/user.mjs';
+import { Message } from '../models/message.mjs';
+import { User } from '../models/user.mjs';
 
 const router = express.Router();
 
