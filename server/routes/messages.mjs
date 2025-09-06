@@ -62,8 +62,14 @@ router.post('/', async (req, res) => {
 // ✅ Получение сообщений (с поддержкой ?limit=N)
 router.get('/:contactId', async (req, res) => {
   try {
+    // если пользователь не авторизован → сразу возвращаем пустые данные
+    if (!req.user) {
+      return res.json({ pinned: null, messages: [] });
+    }
+
     const contactId = req.params.contactId;
 
+    // достаём все сообщения между текущим пользователем и контактId
     const messages = await Message.find({
       $or: [
         { sender: req.user._id, receiver: contactId },
@@ -71,19 +77,23 @@ router.get('/:contactId', async (req, res) => {
       ]
     })
       .sort({ timestamp: 1 })
-      .populate('sender', 'displayName'); // 👈 подгружаем имя отправителя
+      .populate('sender', 'displayName');
 
+    // ищем закрепленное сообщение
     const pinned = messages.find(m => m.pinned);
 
+    // отвечаем фронту
     res.json({
-      pinned: pinned ? {
-        id: pinned._id,
-        sender: pinned.sender._id,
-        senderName: pinned.sender.displayName,
-        receiver: pinned.receiver,
-        message: pinned.message,
-        timestamp: pinned.timestamp
-      } : null,
+      pinned: pinned
+        ? {
+            id: pinned._id,
+            sender: pinned.sender._id,
+            senderName: pinned.sender.displayName,
+            receiver: pinned.receiver,
+            message: pinned.message,
+            timestamp: pinned.timestamp
+          }
+        : null,
       messages: messages.map(msg => ({
         id: msg._id,
         sender: msg.sender._id,

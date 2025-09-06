@@ -1,16 +1,21 @@
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
 
+const isProd = process.env.NODE_ENV === 'production';
+
 const sessionMiddleware = session({
-  secret: 'keyboard cat', // замени на свой
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: 'mongodb://localhost/konnekt_exp',
-    ttl: 60 * 60 * 24 * 30 // 30 дней
+    mongoUrl: process.env.MONGO_URI,
+    ttl: 60 * 60 * 24 * 30
   }),
   cookie: {
-    maxAge: 1000 * 60 * 60 * 24 * 30 // 30 дней
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24 * 30,
+    sameSite: isProd ? 'none' : 'lax',
+    secure: isProd
   }
 });
 

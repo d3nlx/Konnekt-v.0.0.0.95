@@ -1,3 +1,4 @@
+import cors from 'cors';
 import express from 'express';
 import mongoose from 'mongoose';
 import passport from 'passport';
@@ -6,82 +7,78 @@ import { fileURLToPath } from 'url';
 import http from 'http';
 import { Server } from 'socket.io';
 import sharedSession from 'express-socket.io-session';
-import sessionMiddleware from './session.js';
+import sessionMiddleware from './utils/session.js'; // проверь путь
 
-import routes from '../src/routes/index.mjs';
-import contactsRoutes from '../src/routes/contacts.mjs';
-import messagesRouter from '../src/routes/messages.mjs';
-import '../src/strategies/local-strategy.mjs';
+import routes from './routes/index.mjs';
+import contactsRoutes from './routes/contacts.mjs';
+import messagesRouter from './routes/messages.mjs';
+import './strategies/local-strategy.mjs';
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// 👇 Задай свои домены:
+const ORIGINS = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://<ТВОЙ_логин>.github.io',
+  'https://<ТВОЙ_логин>.github.io/<ТВОЙ_репозиторий>',
+];
+
+app.set('trust proxy', 1); // нужно для secure cookies за прокси (Render)
+
+// CORS для REST
+app.use(cors({
+  origin: ORIGINS,
+  credentials: true
+}));
+
+const io = new Server(server, {
+  cors: { origin: ORIGINS, credentials: true }
+});
 app.set('io', io);
 
-// Для пути
+// пути
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // MongoDB
-await mongoose.connect("mongodb://localhost/konnekt_exp");
-console.log("✅ Подключено к MongoDB");
+await mongoose.connect(process.env.MONGO_URI);
+console.log('✅ Подключено к MongoDB Atlas');
 
-// Middleware
-app.use(express.static(path.join(__dirname, 'public')));
+// middleware
 app.use(express.json());
 app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Роуты
+// роуты
 app.use(routes);
 app.use('/api/contacts', contactsRoutes);
 app.use('/api/messages', messagesRouter);
 
-// Привязка сессии к Socket.IO
+// сессия в сокетах
 io.use(sharedSession(sessionMiddleware, { autoSave: true }));
 
-// Сокеты
 io.on('connection', (socket) => {
   const userId = socket.handshake.session?.passport?.user;
-  if (!userId) {
-    console.log('❌ Гость не допущен к сокету');
-    socket.disconnect();
-    return;
-  }
+  if (!userId) return socket.disconnect();
 
-  console.log('🔌 Пользователь подключен к сокету:', userId);
-  socket.join(userId); // Подключение к своей комнате
+  socket.join(userId);
 
-  // Получение и отправка сообщений
-  socket.on('send_message', ({ to, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
-  const payload = {
-    from: userId,
-    message,
-    id,
-    timestamp,
-    replyTo: replyTo || null,
-    replyText: replyText || null,
-    replyUser: replyUser || null,
-    forwardedFrom: forwardedFrom || null
-  };
-
-  io.to(to).emit('new_message', payload);     // собеседнику
-  io.to(userId).emit('new_message', payload); // себе
-
-  // ⚡ событие для авто-обновления контактов
-  io.to(to).emit('contact_added', { from: userId });
-});
-
-
+  socket.on('send_message', (data) => {
+    const { to } = data;
+    const payload = { ...data, from: userId };
+    io.to(to).emit('new_message', payload);
+    io.to(userId).emit('new_message', payload);
+    io.to(to).emit('contact_added', { from: userId });
+  });
 
   socket.on('delete_message', ({ to, ids }) => {
-    // Отправляем всем в чате, что сообщения удалены
     io.to(to).emit('messages_deleted', { ids });
-    io.to(userId).emit('messages_deleted', { ids }); // чтобы у себя тоже обновилось
+    io.to(userId).emit('messages_deleted', { ids });
   });
 });
 
-// Старт сервера
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Сервер + сокеты запущены на http://localhost:${PORT}`);
