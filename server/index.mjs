@@ -1,18 +1,22 @@
+import dotenv from 'dotenv';
 import cors from 'cors';
 import express from 'express';
 import mongoose from 'mongoose';
 import passport from 'passport';
 import path from 'path';
+
 import { fileURLToPath } from 'url';
 import http from 'http';
 import { Server } from 'socket.io';
 import sharedSession from 'express-socket.io-session';
-import sessionMiddleware from './utils/session.js'; // проверь путь
+import sessionMiddleware from './session.js'; // проверь путь
 
 import routes from './routes/index.mjs';
 import contactsRoutes from './routes/contacts.mjs';
 import messagesRouter from './routes/messages.mjs';
 import './strategies/local-strategy.mjs';
+
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
