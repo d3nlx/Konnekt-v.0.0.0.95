@@ -29,7 +29,8 @@ const ORIGINS = [
   'http://localhost:3000',
   'http://localhost:5173',
   'https://d3nlx.github.io',
-  'https://d3nlx.github.io/Konnekt-v.0.0.0.95'
+  'https://d3nlx.github.io/Konnekt-v.0.0.0.95',
+  'https://konnekt.ink'   // 👈 добавь сюда
 ];
 
 app.set('trust proxy', 1);
