@@ -1,9 +1,9 @@
+const { API_BASE_URL, endpoints, routes } = window.CONFIG;
+
 async function updateProfileField(field, value) {
-  const res = await fetch('/api/profile', {
+  const res = await fetch(`${API_BASE_URL}${endpoints.profile}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     body: JSON.stringify({ [field]: value }),
   });
@@ -43,10 +43,9 @@ document.querySelector('.js-change-password-button').addEventListener('click', (
 
 // Open chats
 document.querySelector('.js-open-chats-button').addEventListener('click', () => {
-  window.location.href = 'chating.html';
+  window.location.href = routes.chats;
 });
 
-
 document.querySelector('.left-arrow').addEventListener('click', () => {
-  window.location.href = 'profile.html'
-})
+  window.location.href = routes.profile;
+});
