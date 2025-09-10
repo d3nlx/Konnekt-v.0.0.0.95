@@ -1,4 +1,3 @@
-// docs/js/config.js
 (function () {
   const RENDER_BACKEND = "https://konnekt-v-0-0-0-95.onrender.com";
 
@@ -16,7 +15,11 @@
       login: "/api/user/login",
       register: "/api/users/registration",
       logout: "/api/user/logout",
-      profile: "/api/profile"
+      profile: "/api/profile",
+      contacts: "/api/contacts",
+      messages: "/api/messages/:id",
+      sendMessage: "/api/messages",
+      pinMessage: "/api/messages/:id/pin"
     },
 
     // пути к страницам
