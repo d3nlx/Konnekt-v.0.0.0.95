@@ -394,7 +394,7 @@
     </div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://konnekt-v-0-0-0-95.onrender.com/socket.io/socket.io.js"></script>
   <script type="module">
     const contactsList = document.getElementById('contactsList');
     const addBtn = document.getElementById('addContactBtn');
@@ -420,11 +420,15 @@
     };
     let forwardMode = false;
 
+    const { API_BASE_URL, endpoints, routes } = window.CONFIG;
+
     // =========================
     // 1. ПОЛЬЗОВАТЕЛЬ + СОКЕТ
     // =========================
     async function initUser() {
-      const res = await fetch('/api/profile');
+      const res = await fetch(`${window.CONFIG.API_BASE_URL}${window.CONFIG.endpoints.profile}`, {
+        credentials: 'include'
+      });
       const user = await res.json();
       currentUserId = user._id;  
       currentUserDisplayName = user.displayName;
@@ -658,6 +662,7 @@
           
           await fetch('/api/messages', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               receiverId: contact.id,
@@ -695,7 +700,7 @@
 
 
     async function loadMessages(contactId) {
-      const res = await fetch(`/api/messages/${contactId}`);
+      const res = await fetch(`/api/messages/${contactId}`, { credentials: 'include' });
       const data = await res.json();   // { pinned, messages }
 
       if (data.pinned) {
@@ -1056,6 +1061,7 @@
         // ✏️ редактируем
         const res = await fetch(`/api/messages/${editMessageId}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: text }),
         });
@@ -1076,6 +1082,7 @@
 
         const res = await fetch('/api/messages', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ receiverId: currentChatId, message: text, replyTo: replyToId }),
         });
