@@ -394,8 +394,17 @@
     </div>
   </div>
 
-  <script src="https://konnekt-v-0-0-0-95.onrender.com/socket.io/socket.io.js"></script>
+  <script src="js/config.js"></script>
+
+  <script>
+    const { SOCKET_URL } = window.CONFIG;
+    document.write(`<script src="${SOCKET_URL}/socket.io/socket.io.js"><\/script>`);
+  </script>
+
   <script type="module">
+
+    const { API_BASE_URL, endpoints, routes } = window.CONFIG;
+
     const contactsList = document.getElementById('contactsList');
     const addBtn = document.getElementById('addContactBtn');
     const inputPhone = document.getElementById('phonenumber');
@@ -420,8 +429,6 @@
     };
     let forwardMode = false;
 
-    const { API_BASE_URL, endpoints, routes } = window.CONFIG;
-
     // =========================
     // 1. ПОЛЬЗОВАТЕЛЬ + СОКЕТ
     // =========================
@@ -442,7 +449,7 @@
         let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
           if (!contactEl) {
             try {
-              await fetch('/api/contacts', {
+              await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
@@ -464,7 +471,7 @@
 
       socket.on('contact_added', async ({ from }) => {
         try {
-          await fetch('/api/contacts', {
+          await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -535,7 +542,7 @@
     }
 
     async function loadContacts() {
-      const res = await fetch('/api/contacts', { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}${endpoints.contacts}`, { credentials: 'include' });
       let contacts = await res.json();
 
       // Сначала достанем последние сообщения для каждого контакта
@@ -548,7 +555,10 @@
         let lastTimestamp = 0;
 
         try {
-          const msgRes = await fetch(`/api/messages/${contactId}?limit=1`, { credentials: 'include' });
+          const msgRes = await fetch(
+            `${API_BASE_URL}${endpoints.messages.replace(':id', contactId)}?limit=1`,
+            { credentials: 'include' }
+          );
           const data = await msgRes.json();
           const msgs = data.messages || [];
           if (msgs.length > 0) {
@@ -631,7 +641,7 @@
     addBtn.onclick = async () => {
       const number = inputPhone.value.trim();
       if (!number) return;
-      await fetch('/api/contacts', {
+      await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -660,7 +670,7 @@
             forwardedFrom = msgDiv.dataset.senderName || "Неизвестный";
           }
           
-          await fetch('/api/messages', {
+          await fetch(`${API_BASE_URL}${endpoints.sendMessage}`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -700,7 +710,9 @@
 
 
     async function loadMessages(contactId) {
-      const res = await fetch(`/api/messages/${contactId}`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}${endpoints.messages.replace(':id', contactId)}`, {
+        credentials: 'include'
+      })
       const data = await res.json();   // { pinned, messages }
 
       if (data.pinned) {
@@ -850,7 +862,10 @@
 
         pinBtn.onclick = async () => {
           try {
-            await fetch(`/api/messages/${msgId}/pin`, { method: 'POST' });
+            await fetch(`${API_BASE_URL}${endpoints.pinMessage.replace(':id', msgId)}`, {
+              method: 'POST',
+              credentials: 'include'
+            });
             const msgDiv = document.querySelector(`[data-id="${msgId}"]`);
             if (msgDiv) {
               const text = msgDiv.querySelector('span').textContent;
@@ -1080,7 +1095,7 @@
         const body = { receiverId: currentChatId, message: text };
         if (replyToId) body.replyTo = replyToId;
 
-        const res = await fetch('/api/messages', {
+        const res = await fetch(`${API_BASE_URL}${endpoints.sendMessage}`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
