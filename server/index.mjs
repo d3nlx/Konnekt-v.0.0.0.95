@@ -103,7 +103,7 @@ io.on('connection', (socket) => {
 
       // рассылаем обеим сторонам
       io.to(to).emit('new_message', payload);
-      io.to(from).emit('new_message', payload);
+      //io.to(from).emit('new_message', payload);
 
       // добавляем в контакты получателю
       io.to(to).emit('contact_added', { from });
