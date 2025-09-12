@@ -16,8 +16,8 @@ import contactsRoutes from './routes/contacts.mjs';
 import messagesRouter from './routes/messages.mjs';
 import './strategies/local-strategy.mjs';
 
-import { Message } from './models/message.mjs'; // 👈 твоя модель сообщений
-import { User } from './models/user.mjs'; // 👈 пригодится для displayName
+import { Message } from './models/message.mjs'; // модель сообщений
+import { User } from './models/user.mjs'; // пригодится для displayName
 
 dotenv.config();
 
@@ -30,7 +30,7 @@ const ORIGINS = [
   'http://localhost:5173',
   'https://d3nlx.github.io',
   'https://d3nlx.github.io/Konnekt-v.0.0.0.95',
-  'https://konnekt.ink'   // 👈 добавь сюда
+  'https://konnekt.ink'
 ];
 
 app.set('trust proxy', 1);

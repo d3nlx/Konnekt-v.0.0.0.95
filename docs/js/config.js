@@ -8,7 +8,7 @@
 
   window.CONFIG = {
     API_BASE_URL: apiBase,
-    SOCKET_URL: apiBase,
+    SOCKET_URL: RENDER_BACKEND,
 
     // эндпоинты API
     endpoints: {
