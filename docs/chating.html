@@ -446,8 +446,11 @@
         withCredentials: true,
         transports: ["websocket"]
       });
-      socket.on('new_message', async ({ from, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
-        if (from === currentUserId) return;
+      socket.on('new_message', async ({ from, to, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
+        // Если это исходящее сообщение и вы уже его отрисовали — не добавляйте снова
+        if (from === currentUserId && to === currentChatId) return;
+        // Если это входящее сообщение и вы уже его отрисовали — не добавляйте снова
+        if (to === currentUserId && from === currentChatId) return;
 
         let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
           if (!contactEl) {
