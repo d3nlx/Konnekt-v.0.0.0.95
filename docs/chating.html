@@ -396,7 +396,10 @@
 
   <script src="js/config.js"></script>
 
-  <script src="https://konnekt-v-0-0-0-95.onrender.com/socket.io/socket.io.js"></script>
+  <script>
+    const { SOCKET_URL } = window.CONFIG;
+    document.write(`<script src="${SOCKET_URL}/socket.io/socket.io.js"><\/script>`);
+  </script>
 
   <script type="module">
 
