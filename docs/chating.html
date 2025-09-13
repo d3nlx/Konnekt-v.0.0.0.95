@@ -396,10 +396,7 @@
 
   <script src="js/config.js"></script>
 
-  <script>
-    const { SOCKET_URL } = window.CONFIG;
-    document.write(`<script src="${SOCKET_URL}/socket.io/socket.io.js"><\/script>`);
-  </script>
+  <script src="https://konnekt-v-0-0-0-95.onrender.com/socket.io/socket.io.js"></script>
 
   <script type="module">
 
@@ -447,33 +444,41 @@
         transports: ["websocket"]
       });
       socket.on('new_message', async ({ from, to, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
+        // 🔒 Если сообщение уже отрисовано в DOM → игнорируем дубль
+        if (document.querySelector(`.message[data-id="${id}"]`)) {
+          return;
+        }
+
         // Если это исходящее сообщение и вы уже его отрисовали — не добавляйте снова
         if (from === currentUserId && to === currentChatId) return;
         // Если это входящее сообщение и вы уже его отрисовали — не добавляйте снова
         if (to === currentUserId && from === currentChatId) return;
 
+        // Проверяем есть ли контакт, если нет — добавляем
         let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
-          if (!contactEl) {
-            try {
-              await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: from })
-              });
-              await loadContacts();
-            } catch (e) {
-              console.error("Не удалось добавить новый контакт", e);
-            }
+        if (!contactEl) {
+          try {
+            await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: from })
+            });
+            await loadContacts();
+          } catch (e) {
+            console.error("Не удалось добавить новый контакт", e);
           }
+        }
 
-
+        // Если чат с этим пользователем открыт → сразу добавляем сообщение
         if (from === currentChatId) {
           appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom);
         }
 
+        // Обновляем превью контакта
         updateContactPreview(from, message, timestamp);
       });
+
 
       socket.on('contact_added', async ({ from }) => {
         try {
