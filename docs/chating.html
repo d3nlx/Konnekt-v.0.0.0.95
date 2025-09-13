@@ -447,11 +447,7 @@
       socket.off('new_message');
 
       socket.on('new_message', async ({ from, to, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
-        // ✅ Проверка на дубль по ID
         if (document.querySelector(`.message[data-id="${id}"]`)) return;
-
-        // ✅ Отбрасываем "эхо" своих же сообщений
-        if (from === currentUserId && to === currentChatId) return;
 
         let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
         if (!contactEl) {
@@ -468,11 +464,19 @@
           }
         }
 
-        if (from === currentChatId) {
-          appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom);
+        if (from === currentChatId || to === currentChatId) {
+          appendMessage(
+            from === currentUserId,
+            message,
+            id,
+            timestamp,
+            replyTo,
+            replyText,
+            replyUser,
+            forwardedFrom
+          );
+          updateContactPreview(from, message, timestamp);
         }
-
-        updateContactPreview(from, message, timestamp);
       });
 
 
@@ -1110,6 +1114,7 @@
         });
         const data = await res.json();
 
+        /*
         appendMessage(
           true,
           text,
@@ -1120,6 +1125,7 @@
           data.data?.replyUser
         );
         updateContactPreview(currentChatId, text, data.data?.timestamp);
+        */
 
         socket.emit('send_message', {
           to: currentChatId,
