@@ -440,45 +440,40 @@
       currentUserId = user._id;  
       currentUserDisplayName = user.displayName;
 
+      
+
       socket = io(SOCKET_URL, {
         withCredentials: true,
         transports: ["websocket"]
       });
-      socket.off('new_message');
-
       socket.on('new_message', async ({ from, to, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
-        if (document.querySelector(`.message[data-id="${id}"]`)) return;
+        // Если это исходящее сообщение и вы уже его отрисовали — не добавляйте снова
+        if (from === currentUserId && to === currentChatId) return;
+        // Если это входящее сообщение и вы уже его отрисовали — не добавляйте снова
+        if (to === currentUserId && from === currentChatId) return;
 
         let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
-        if (!contactEl) {
-          try {
-            await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
-              method: 'POST',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: from })
-            });
-            await loadContacts();
-          } catch (e) {
-            console.error("Не удалось добавить новый контакт", e);
+          if (!contactEl) {
+            try {
+              await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: from })
+              });
+              await loadContacts();
+            } catch (e) {
+              console.error("Не удалось добавить новый контакт", e);
+            }
           }
+
+
+        if (from === currentChatId) {
+          appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom);
         }
 
-        if (from === currentChatId || to === currentChatId) {
-          appendMessage(
-            from === currentUserId,
-            message,
-            id,
-            timestamp,
-            replyTo,
-            replyText,
-            replyUser,
-            forwardedFrom
-          );
-          updateContactPreview(from, message, timestamp);
-        }
+        updateContactPreview(from, message, timestamp);
       });
-
 
       socket.on('contact_added', async ({ from }) => {
         try {
@@ -1114,7 +1109,6 @@
         });
         const data = await res.json();
 
-        /*
         appendMessage(
           true,
           text,
@@ -1125,7 +1119,6 @@
           data.data?.replyUser
         );
         updateContactPreview(currentChatId, text, data.data?.timestamp);
-        */
 
         socket.emit('send_message', {
           to: currentChatId,
