@@ -14,6 +14,7 @@ import sessionMiddleware from './session.js';
 import routes from './routes/index.mjs';
 import contactsRoutes from './routes/contacts.mjs';
 import messagesRouter from './routes/messages.mjs';
+import profileRouter from './routes/user-profile.mjs';
 import './strategies/local-strategy.mjs';
 
 import { Message } from './models/message.mjs'; // модель сообщений
@@ -63,6 +64,7 @@ app.use(passport.session());
 app.use(routes);
 app.use('/api/contacts', contactsRoutes);
 app.use('/api/messages', messagesRouter);
+app.use('/api/profile', profileRouter);
 
 // Сессия в сокетах
 io.use(sharedSession(sessionMiddleware, { autoSave: true }));
@@ -177,8 +179,3 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Сервер + сокеты запущены на http://localhost:${PORT}`);
 });
-
-
-/*
- Обновить серверный файл что бы все работало с сокетами
-*/

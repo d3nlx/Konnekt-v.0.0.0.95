@@ -4,7 +4,7 @@ import { User } from '../models/user.mjs';
 
 const router = Router();
 
-router.get('/api/profile', (req, res) => {
+router.get('/', (req, res) => {
   if (!req.user) {
     return res.status(401).send({ msg: 'Not authenticated' });
   }
@@ -18,7 +18,7 @@ router.get('/api/profile', (req, res) => {
   });
 });
 
-router.patch('/api/profile', async (req, res) => {
+router.patch('/', async (req, res) => {
   if (!req.user) return res.sendStatus(401);
 
   const { name, displayName, phonenumber, password } = req.body;
