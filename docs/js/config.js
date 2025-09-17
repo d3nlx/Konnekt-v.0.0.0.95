@@ -7,7 +7,7 @@
   const apiBase = isLocal ? "http://localhost:3000" : RENDER_BACKEND;
 
   window.CONFIG = {
-    API_BASE_URL: apiBase,
+    API_BASE_URL: RENDER_BACKEND,
     SOCKET_URL: RENDER_BACKEND,
 
     // эндпоинты API

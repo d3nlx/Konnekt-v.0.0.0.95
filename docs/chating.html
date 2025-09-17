@@ -430,7 +430,7 @@
     // 1. ПОЛЬЗОВАТЕЛЬ + СОКЕТ
     // =========================
     async function initUser() {
-      const res = await fetch('/api/profile');
+      const res = await fetch('/api/user/profile', { credentials: 'include' });
       const user = await res.json();
       currentUserId = user._id;  
       currentUserDisplayName = user.displayName;
