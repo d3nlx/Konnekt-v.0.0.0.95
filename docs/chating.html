@@ -402,6 +402,8 @@
   </script>
   
   <script type="module">
+    const { API_BASE_URL, endpoints } = window.CONFIG;
+
     const contactsList = document.getElementById('contactsList');
     const addBtn = document.getElementById('addContactBtn');
     const inputPhone = document.getElementById('phonenumber');
@@ -430,7 +432,7 @@
     // 1. ПОЛЬЗОВАТЕЛЬ + СОКЕТ
     // =========================
     async function initUser() {
-      const res = await fetch('/api/user/profile', { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}${endpoints.profile}`, { credentials: 'include' });
       const user = await res.json();
       currentUserId = user._id;  
       currentUserDisplayName = user.displayName;
@@ -444,12 +446,12 @@
         let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
           if (!contactEl) {
             try {
-              await fetch('/api/contacts', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: from })
-              });
+              await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: from })
+            });
               await loadContacts();
             } catch (e) {
               console.error("Не удалось добавить новый контакт", e);
@@ -466,12 +468,12 @@
 
       socket.on('contact_added', async ({ from }) => {
         try {
-          await fetch('/api/contacts', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: from })
-          });
+          await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: from })
+        });
           await loadContacts();
         } catch (e) {
           console.error("Не удалось обновить список контактов", e);
@@ -537,7 +539,7 @@
     }
 
     async function loadContacts() {
-      const res = await fetch('/api/contacts', { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}${endpoints.contacts}`, { credentials: 'include' });
       let contacts = await res.json();
 
       // Сначала достанем последние сообщения для каждого контакта
@@ -550,7 +552,10 @@
         let lastTimestamp = 0;
 
         try {
-          const msgRes = await fetch(`/api/messages/${contactId}?limit=1`, { credentials: 'include' });
+          const msgRes = await fetch(
+            `${API_BASE_URL}${endpoints.messages.replace(':id', contactId)}?limit=1`,
+            { credentials: 'include' }
+          );
           const data = await msgRes.json();
           const msgs = data.messages || [];
           if (msgs.length > 0) {
@@ -633,7 +638,7 @@
     addBtn.onclick = async () => {
       const number = inputPhone.value.trim();
       if (!number) return;
-      await fetch('/api/contacts', {
+      await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -662,8 +667,9 @@
             forwardedFrom = msgDiv.dataset.senderName || "Неизвестный";
           }
           
-          await fetch('/api/messages', {
+          await fetch(`${API_BASE_URL}${endpoints.sendMessage}`, {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               receiverId: contact.id,
@@ -701,7 +707,8 @@
 
 
     async function loadMessages(contactId) {
-      const res = await fetch(`/api/messages/${contactId}`);
+      const res = await fetch(`${API_BASE_URL}${endpoints.messages.replace(':id', contactId)}`);
+
       const data = await res.json();   // { pinned, messages }
 
       if (data.pinned) {
@@ -851,7 +858,10 @@
 
         pinBtn.onclick = async () => {
           try {
-            await fetch(`/api/messages/${msgId}/pin`, { method: 'POST' });
+            await fetch(`${API_BASE_URL}/api/messages/${msgId}/pin`, {
+            method: 'POST',
+            credentials: 'include'
+          });
             const msgDiv = document.querySelector(`[data-id="${msgId}"]`);
             if (msgDiv) {
               const text = msgDiv.querySelector('span').textContent;
@@ -977,7 +987,10 @@
       deleteBtn.onclick = async () => {
         for (const id of selectedMessages) {
           try {
-            await fetch(`/api/messages/${id}`, { method: 'DELETE' });
+            await fetch(`${API_BASE_URL}/api/messages/${id}`, {
+            method: 'DELETE',
+            credentials: 'include'
+          });
           } catch (err) {
             console.error(err);
           }
@@ -1009,7 +1022,10 @@
         e.stopPropagation();
         container.style.display = 'none';
         container.dataset.pinnedId = "";
-        await fetch(`/api/messages/${msgId}/unpin`, { method: 'POST' });
+        await fetch(`${API_BASE_URL}/api/messages/${msgId}/unpin`, {
+          method: 'POST',
+          credentials: 'include'
+        });
       };
     }
 
@@ -1060,8 +1076,9 @@
 
       if (editMessageId) {
         // ✏️ редактируем
-        const res = await fetch(`/api/messages/${editMessageId}`, {
+        const res = await fetch(`${API_BASE_URL}${endpoints.messages.replace(':id', editMessageId)}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: text }),
         });
@@ -1080,8 +1097,9 @@
         const body = { receiverId: currentChatId, message: text };
         if (replyToId) body.replyTo = replyToId;
 
-        const res = await fetch('/api/messages', {
+        const res = await fetch(`${API_BASE_URL}${endpoints.sendMessage}`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ receiverId: currentChatId, message: text, replyTo: replyToId }),
         });
