@@ -707,7 +707,10 @@
 
 
     async function loadMessages(contactId) {
-      const res = await fetch(`${API_BASE_URL}${endpoints.messages.replace(':id', contactId)}`);
+      const res = await fetch(
+        `${API_BASE_URL}${endpoints.messages.replace(':id', contactId)}`,
+        { credentials: 'include' }
+      );
 
       const data = await res.json();   // { pinned, messages }
 
