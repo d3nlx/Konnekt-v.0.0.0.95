@@ -439,7 +439,7 @@
 
       
 
-      socket = io();
+      socket = io(SOCKET_URL, { withCredentials: true });
       socket.on('new_message', async ({ from, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
         if (from === currentUserId) return;
 
