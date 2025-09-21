@@ -428,8 +428,6 @@
     };
     let forwardMode = false;
 
-    let loadedMessageIds = new Set();
-
     // =========================
     // 1. ПОЛЬЗОВАТЕЛЬ + СОКЕТ
     // =========================
@@ -442,30 +440,28 @@
       
 
       socket = io(SOCKET_URL, { withCredentials: true });
-      socket.on('new_message', async ({ from, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom, senderName }) => {
-        if (from === currentUserId) return;   // свои игнорим
-        if (loadedMessageIds.has(id)) return; // ⚡ проверка на дубликаты
+      socket.on('new_message', async ({ from, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
+        if (from === currentUserId) return;
 
-        // если нет контакта — добавляем
+        if (document.querySelector(`[data-id="${id}"]`)) return;
         let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
-        if (!contactEl) {
-          try {
-            await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
+          if (!contactEl) {
+            try {
+              await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
               method: 'POST',
               credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ id: from })
             });
-            await loadContacts();
-          } catch (e) {
-            console.error("Не удалось добавить новый контакт", e);
+              await loadContacts();
+            } catch (e) {
+              console.error("Не удалось добавить новый контакт", e);
+            }
           }
-        }
 
-        // добавляем сообщение только в открытый чат
+
         if (from === currentChatId) {
-          appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom, senderName);
-          loadedMessageIds.add(id); // ⚡ сразу в Set
+          appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom);
         }
 
         updateContactPreview(from, message, timestamp);
@@ -716,32 +712,29 @@
         `${API_BASE_URL}${endpoints.messages.replace(':id', contactId)}`,
         { credentials: 'include' }
       );
-      const data = await res.json(); // { pinned, messages }
+
+      const data = await res.json();   // { pinned, messages }
 
       if (data.pinned) {
+        // передаём и текст и id закреплённого сообщения
         showPinnedMessage(data.pinned.message, data.pinned.id);
       } else {
         document.getElementById('pinnedContainer').style.display = 'none';
       }
 
       chatMessages.innerHTML = '';
-      loadedMessageIds.clear(); // ⚡ при открытии чата сбрасываем Set
-
       data.messages.forEach(m => {
-        if (!loadedMessageIds.has(m.id)) {
-          appendMessage(
-            m.sender === currentUserId,
-            m.message,
-            m.id,
-            m.timestamp,
-            m.replyTo,
-            m.replyText,
-            m.replyUser,
-            m.forwardedFrom,
-            m.senderName
-          );
-          loadedMessageIds.add(m.id);
-        }
+        appendMessage(
+          m.sender === currentUserId,
+          m.message,
+          m.id,
+          m.timestamp,
+          m.replyTo,
+          m.replyText,
+          m.replyUser,
+          m.forwardedFrom,
+          m.senderName
+        );
       });
 
       chatMessages.scrollTop = chatMessages.scrollHeight;
