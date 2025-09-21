@@ -443,6 +443,7 @@
       socket.on('new_message', async ({ from, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
         if (from === currentUserId) return;
 
+        if (document.querySelector(`[data-id="${id}"]`)) return;
         let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
           if (!contactEl) {
             try {
