@@ -443,10 +443,8 @@
 
       socket = io(SOCKET_URL, { withCredentials: true });
       socket.on('new_message', async ({ from, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom, senderName }) => {
-        if (loadedMessageIds.has(id)) return; // защита от дублей
-          appendMessage(from === currentUserId, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom, senderName);
-          loadedMessageIds.add(id);
-
+        if (from === currentUserId) return;   // свои игнорим
+        if (loadedMessageIds.has(id)) return; // ⚡ проверка на дубликаты
 
         // если нет контакта — добавляем
         let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
@@ -731,7 +729,6 @@
 
       data.messages.forEach(m => {
         if (!loadedMessageIds.has(m.id)) {
-          loadedMessageIds.add(m.id);
           appendMessage(
             m.sender === currentUserId,
             m.message,
