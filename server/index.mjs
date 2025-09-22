@@ -76,38 +76,62 @@ io.on('connection', (socket) => {
   socket.join(userId);
   console.log(`🔌 Пользователь ${userId} подключился`);
 
-  // 📩 Отправка сообщения
-  socket.on('send_message', async ({ to, message, replyTo, forwardedFrom }) => {
+  // 📩 Обработка send_message: если клиент уже сохранил сообщение через REST (передал id) — используем его,
+  // иначе создаём новое. В payload также пробрасываем tempId (если был), чтобы клиент мог заменить временный элемент.
+  socket.on('send_message', async ({ to, message, replyTo, forwardedFrom, id: existingId, tempId, timestamp }) => {
     try {
       const from = userId;
       const sender = await User.findById(from).lean();
 
-      // сохраняем в MongoDB
-      const msgDoc = await Message.create({
-        sender: from,
-        receiver: to,
-        message,
-        replyTo,
-        forwardedFrom,
-        timestamp: Date.now()
-      });
+      let msgDoc;
 
+      if (existingId) {
+        // 1) Если клиент прислал существующий id (REST уже сохранил) — попробуем найти этот документ
+        msgDoc = await Message.findById(existingId).lean();
+        if (!msgDoc) {
+          // На всякий случай: если по каким-то причинам REST не сохранил, создаём новый
+          msgDoc = await Message.create({
+            sender: from,
+            receiver: to,
+            message,
+            replyTo,
+            forwardedFrom,
+            timestamp: timestamp || Date.now()
+          });
+          // если create вернул Mongoose-документ, сделаем его plain-объект
+          msgDoc = await Message.findById(msgDoc._id).lean();
+        }
+      } else {
+        // 2) Если id не пришёл — создаём новое сообщение (обычное поведение)
+        const created = await Message.create({
+          sender: from,
+          receiver: to,
+          message,
+          replyTo,
+          forwardedFrom,
+          timestamp: timestamp || Date.now()
+        });
+        msgDoc = await Message.findById(created._id).lean();
+      }
+
+      // Формируем payload; пробрасываем tempId если был
       const payload = {
         id: msgDoc._id.toString(),
         from,
         to,
-        message,
+        message: msgDoc.message,
         timestamp: msgDoc.timestamp,
-        replyTo,
-        forwardedFrom,
-        senderName: sender.displayName || sender.name || "User"
+        replyTo: msgDoc.replyTo,
+        forwardedFrom: msgDoc.forwardedFrom,
+        senderName: sender?.displayName || sender?.name || "User",
       };
+      if (tempId) payload.tempId = tempId;
 
-      // рассылаем обеим сторонам
+      // Рассылаем обеим сторонам — теперь с корректным id (и tempId для клиента-отправителя)
       io.to(to).emit('new_message', payload);
       io.to(from).emit('new_message', payload);
 
-      // добавляем в контакты получателю
+      // Уведомление о добавлении контакта (как у тебя было)
       io.to(to).emit('contact_added', { from });
     } catch (err) {
       console.error("Ошибка при отправке сообщения:", err);

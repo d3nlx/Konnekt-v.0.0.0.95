@@ -1109,7 +1109,7 @@
         editMessageId = null;
         exitDeleteMode();
       } else {
-        // 📩 новое сообщение
+        // 📩 новое сообщение — генерим временный ID и рендерим "эхо"
         const tempId = "temp-" + Date.now() + "-" + Math.random().toString(36).slice(2);
 
         appendMessage(
@@ -1127,27 +1127,31 @@
         if (replyToId) body.replyTo = replyToId;
 
         try {
+          // 1) сохраняем через REST (твой существующий эндпоинт)
           const res = await fetch(`${API_BASE_URL}${endpoints.sendMessage}`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
+            // передаём tempId в теле, чтобы при желании сервер мог его использовать
             body: JSON.stringify({ ...body, tempId }),
           });
           const data = await res.json();
 
+          // 2) если REST сохранил сообщение — обновляем временный элемент и уведомляем сокетом
           if (data.success && data.data?.id) {
-            // 🆗 обновляем временный ID на реальный
+            // обновляем временный ID → реальный (чтобы у нас не было дублей)
             const tempMsg = document.querySelector(`[data-id="${tempId}"]`);
             if (tempMsg) {
               tempMsg.dataset.id = data.data.id;
             }
             updateContactPreview(currentChatId, text, data.data.timestamp);
 
+            // Эмитим в сокет и передаём также tempId (чтобы сервер мог пробросить его назад в новом событии)
             socket.emit('send_message', {
               to: currentChatId,
               message: text,
-              id: data.data.id,
-              tempId,
+              id: data.data.id,        // id, который вернул REST (если есть)
+              tempId,                  // временный id — сервер пробросит его в payload
               timestamp: data.data.timestamp,
               replyTo: data.data.replyTo,
               replyText: data.data.replyText,
@@ -1166,6 +1170,7 @@
 
       messageInput.value = '';
     };
+
 
 
     document.querySelector('.js-open-profile-button').addEventListener('click', () => {
