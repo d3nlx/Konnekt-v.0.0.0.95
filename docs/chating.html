@@ -441,43 +441,45 @@
 
       socket = io(SOCKET_URL, { withCredentials: true });
       socket.on('new_message', async ({ from, message, id, tempId, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
-      if (from === currentUserId) {
-        // 💡 если это наше сообщение и есть tempId → обновляем вместо дублирования
-        if (tempId) {
-          const tempMsg = document.querySelector(`[data-id="${tempId}"]`);
-          if (tempMsg) {
-            tempMsg.dataset.id = id; // заменяем временный id на настоящий
-            return; // выходим, чтобы не добавлять дубль
+        if (from === currentUserId) {
+          // 💡 это наше сообщение → заменяем временный id на настоящий
+          if (tempId) {
+            const tempMsg = document.querySelector(`[data-id="${tempId}"]`);
+            if (tempMsg) {
+              tempMsg.dataset.id = id;
+              return;
+            }
+          }
+          return;
+        }
+
+        // если сообщение уже есть → не добавляем дубль
+        if (document.querySelector(`[data-id="${id}"]`)) return;
+
+        // если контакта ещё нет → добавим
+        let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
+        if (!contactEl) {
+          try {
+            await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: from })
+            });
+            await loadContacts();
+          } catch (e) {
+            console.error("Не удалось добавить новый контакт", e);
           }
         }
-        return;
-      }
 
-      // если сообщение уже есть с таким id → не добавляем дубль
-      if (document.querySelector(`[data-id="${id}"]`)) return;
-
-      let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
-      if (!contactEl) {
-        try {
-          await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: from })
-          });
-          await loadContacts();
-        } catch (e) {
-          console.error("Не удалось добавить новый контакт", e);
+        // если мы находимся в чате с этим пользователем → сразу рисуем
+        if (from === currentChatId) {
+          appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom);
         }
-      }
 
-      if (from === currentChatId) {
-        appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom);
-      }
-
-      updateContactPreview(from, message, timestamp);
-    });
-
+        // обновляем превью в списке контактов
+        updateContactPreview(from, message, timestamp);
+      });
 
       socket.on('contact_added', async ({ from }) => {
         try {
@@ -1086,7 +1088,7 @@
     });
 
     // Кнопка отправки
-    sendBtn.onclick = async () => { 
+    sendBtn.onclick = async () => {
       const text = messageInput.value.trim();
       if (!currentChatId || !text) return;
 
@@ -1118,8 +1120,11 @@
           tempId,
           Date.now(),   // временный timestamp
           replyToId,
+          // 👇 добавляем replyText и replyUser если есть
+          replyToId ? document.querySelector(`[data-id="${replyToId}"] span`)?.textContent : null,
+          replyToId ? (document.querySelector(`[data-id="${replyToId}"]`).dataset.senderName || "User") : null,
           null,
-          null
+          currentUserDisplayName
         );
         updateContactPreview(currentChatId, text, Date.now());
 
@@ -1127,35 +1132,38 @@
         if (replyToId) body.replyTo = replyToId;
 
         try {
-          // 1) сохраняем через REST (твой существующий эндпоинт)
+          // 1) сохраняем через REST
           const res = await fetch(`${API_BASE_URL}${endpoints.sendMessage}`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            // передаём tempId в теле, чтобы при желании сервер мог его использовать
             body: JSON.stringify({ ...body, tempId }),
           });
           const data = await res.json();
 
           // 2) если REST сохранил сообщение — обновляем временный элемент и уведомляем сокетом
           if (data.success && data.data?.id) {
-            // обновляем временный ID → реальный (чтобы у нас не было дублей)
+            const savedMsg = data.data;
+
+            // обновляем временный ID → реальный
             const tempMsg = document.querySelector(`[data-id="${tempId}"]`);
             if (tempMsg) {
-              tempMsg.dataset.id = data.data.id;
+              tempMsg.dataset.id = savedMsg.id;
             }
-            updateContactPreview(currentChatId, text, data.data.timestamp);
 
-            // Эмитим в сокет и передаём также tempId (чтобы сервер мог пробросить его назад в новом событии)
+            updateContactPreview(currentChatId, savedMsg.message, savedMsg.timestamp);
+
+            // эмитим в сокет + пробрасываем tempId
             socket.emit('send_message', {
               to: currentChatId,
-              message: text,
-              id: data.data.id,        // id, который вернул REST (если есть)
-              tempId,                  // временный id — сервер пробросит его в payload
-              timestamp: data.data.timestamp,
-              replyTo: data.data.replyTo,
-              replyText: data.data.replyText,
-              replyUser: data.data.replyUser
+              message: savedMsg.message,
+              id: savedMsg.id,
+              tempId,
+              timestamp: savedMsg.timestamp,
+              replyTo: savedMsg.replyTo,
+              replyText: savedMsg.replyText,
+              replyUser: savedMsg.replyUser,
+              forwardedFrom: savedMsg.forwardedFrom
             });
           }
         } catch (err) {
@@ -1163,15 +1171,12 @@
         }
 
         // сброс reply
-        messageInput.value = '';
         replyToId = null;
         document.getElementById('replyPreview').style.display = 'none';
       }
 
       messageInput.value = '';
     };
-
-
 
     document.querySelector('.js-open-profile-button').addEventListener('click', () => {
       window.location.href = 'profile.html'
