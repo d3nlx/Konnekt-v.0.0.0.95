@@ -681,28 +681,29 @@
           } else {
             forwardedFrom = msgDiv.dataset.senderName || "Неизвестный";
           }
-          
-          await fetch(`${API_BASE_URL}${endpoints.sendMessage}`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              receiverId: contact.id,
-              message: text,
-              forwardedFrom
-            }),
-          }).then(async res => {
-            const data = await res.json();
-            updateContactPreview(contact.id, text, data.data?.timestamp || Date.now());
 
-            // ⚡ вот это нужно добавить
-            socket.emit('send_message', {
-              to: contact.id,
-              message: text,
-              id: data.data?.id,
-              timestamp: data.data?.timestamp,
-              forwardedFrom
-            });
+          // 📩 генерим временный ID и сразу рендерим "эхо"
+          const tempId = "temp-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+
+          appendMessage(
+            true,
+            text,
+            tempId,
+            Date.now(),
+            null,
+            null,
+            null,
+            forwardedFrom,
+            currentUserDisplayName
+          );
+          updateContactPreview(contact.id, text, Date.now());
+
+          // ⚡ теперь только через socket
+          socket.emit("send_message", {
+            to: contact.id,
+            message: text,
+            tempId,
+            forwardedFrom
           });
         }
 
@@ -719,7 +720,6 @@
       if (activeEl) activeEl.classList.add('active-contact');
       await loadMessages(contact.id);
     }
-
 
     async function loadMessages(contactId) {
       const res = await fetch(
@@ -1093,7 +1093,7 @@
       if (!currentChatId || !text) return;
 
       if (editMessageId) {
-        // ✏️ редактирование сообщения
+        // ✏️ редактирование сообщения (оставляем как есть)
         const res = await fetch(`${API_BASE_URL}${endpoints.messages.replace(':id', editMessageId)}`, {
           method: 'PUT',
           credentials: 'include',
@@ -1111,7 +1111,7 @@
         editMessageId = null;
         exitDeleteMode();
       } else {
-        // 📩 новое сообщение — генерим временный ID и рендерим "эхо"
+        // 📩 новое сообщение — генерим временный ID
         const tempId = "temp-" + Date.now() + "-" + Math.random().toString(36).slice(2);
 
         appendMessage(
@@ -1120,7 +1120,6 @@
           tempId,
           Date.now(),   // временный timestamp
           replyToId,
-          // 👇 добавляем replyText и replyUser если есть
           replyToId ? document.querySelector(`[data-id="${replyToId}"] span`)?.textContent : null,
           replyToId ? (document.querySelector(`[data-id="${replyToId}"]`).dataset.senderName || "User") : null,
           null,
@@ -1128,46 +1127,16 @@
         );
         updateContactPreview(currentChatId, text, Date.now());
 
-        const body = { receiverId: currentChatId, message: text };
-        if (replyToId) body.replyTo = replyToId;
-
         try {
-          // 1) сохраняем через REST
-          const res = await fetch(`${API_BASE_URL}${endpoints.sendMessage}`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...body, tempId }),
+          // 🔹 теперь сразу через сокет, без fetch
+          socket.emit("send_message", {
+            to: currentChatId,
+            message: text,
+            replyTo: replyToId,
+            tempId
           });
-          const data = await res.json();
-
-          // 2) если REST сохранил сообщение — обновляем временный элемент и уведомляем сокетом
-          if (data.success && data.data?.id) {
-            const savedMsg = data.data;
-
-            // обновляем временный ID → реальный
-            const tempMsg = document.querySelector(`[data-id="${tempId}"]`);
-            if (tempMsg) {
-              tempMsg.dataset.id = savedMsg.id;
-            }
-
-            updateContactPreview(currentChatId, savedMsg.message, savedMsg.timestamp);
-
-            // эмитим в сокет + пробрасываем tempId
-            socket.emit('send_message', {
-              to: currentChatId,
-              message: savedMsg.message,
-              id: savedMsg.id,
-              tempId,
-              timestamp: savedMsg.timestamp,
-              replyTo: savedMsg.replyTo,
-              replyText: savedMsg.replyText,
-              replyUser: savedMsg.replyUser,
-              forwardedFrom: savedMsg.forwardedFrom
-            });
-          }
         } catch (err) {
-          console.error("Ошибка при отправке сообщения:", err);
+          console.error("Ошибка при отправке сообщения через socket:", err);
         }
 
         // сброс reply
