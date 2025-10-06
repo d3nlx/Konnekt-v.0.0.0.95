@@ -437,20 +437,18 @@
       currentUserId = user._id;  
       currentUserDisplayName = user.displayName;
 
-      
-
       socket = io(SOCKET_URL, { withCredentials: true });
       socket.on('new_message', async ({ from, message, id, tempId, timestamp, replyTo, replyText, replyUser, forwardedFrom }) => {
         if (from === currentUserId) {
-          // 💡 это наше сообщение → заменяем временный id на настоящий
-          if (tempId) {
-            const tempMsg = document.querySelector(`[data-id="${tempId}"]`);
-            if (tempMsg) {
-              tempMsg.dataset.id = id;
-              return;
-            }
-          }
-          return;
+        // 💡 это наше сообщение → заменяем временный id на настоящий
+        if (tempId) {
+        const tempMsg = document.querySelector(`[data-id="${tempId}"]`);
+        if (tempMsg) {
+        tempMsg.dataset.id = id;
+        return;
+        }
+        }
+        return;
         }
 
         // если сообщение уже есть → не добавляем дубль
@@ -459,27 +457,34 @@
         // если контакта ещё нет → добавим
         let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
         if (!contactEl) {
-          try {
-            await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
-              method: 'POST',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: from })
-            });
-            await loadContacts();
-          } catch (e) {
-            console.error("Не удалось добавить новый контакт", e);
-          }
+        try {
+        await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: from })
+        });
+        await loadContacts();
+        } catch (e) {
+        console.error("Не удалось добавить новый контакт", e);
+        }
+        }
+
+        // 🔹 определяем имя отправителя
+        let senderName = 'Unknown';
+        const contact = document.querySelector(`.contact[data-id="${from}"] .contact-name`);
+        if (contact) {
+        senderName = contact.textContent.trim();
         }
 
         // если мы находимся в чате с этим пользователем → сразу рисуем
         if (from === currentChatId) {
-          appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom);
+        appendMessage(false, message, id, timestamp, replyTo, replyText, replyUser, forwardedFrom, senderName);
         }
 
         // обновляем превью в списке контактов
         updateContactPreview(from, message, timestamp);
-      });
+        });
 
       socket.on('contact_added', async ({ from }) => {
         try {
@@ -494,7 +499,6 @@
           console.error("Не удалось обновить список контактов", e);
         }
       });
-
 
       socket.on('message_edited', ({ id, message, timestamp }) => {
         const msgDiv = document.querySelector(`[data-id="${id}"]`);
@@ -765,55 +769,67 @@
 
       // ⚡ сохраняем имя автора
       if (senderName) {
-        div.dataset.senderName = senderName;
+      div.dataset.senderName = senderName;
       } else {
-        div.dataset.senderName = isOwn ? currentUserDisplayName : "Unknown";
+      div.dataset.senderName = isOwn ? currentUserDisplayName : "Unknown";
       }
 
       const ts = (timestamp != null) ? new Date(timestamp).getTime() : null;
       if (ts) div.dataset.timestamp = String(ts);
 
-      // 🔹 пересланное сообщение (как reply-дизайн)
-      if (forwardedFrom) {
-        const fwdDiv = document.createElement('div');
-        fwdDiv.style.fontSize = '0.8em';
-        fwdDiv.style.padding = '4px 8px';
-        fwdDiv.style.borderLeft = '3px solid #007bff';
-        fwdDiv.style.marginBottom = '4px';
-        fwdDiv.style.background = 'rgba(0,0,0,0.05)';
-        fwdDiv.style.borderRadius = '6px';
-
-        const fwdName = document.createElement('div');
-        fwdName.style.fontWeight = 'bold';
-        fwdName.textContent = `Forwarded from: ${forwardedFrom}`;
-
-        fwdDiv.appendChild(fwdName);
-        div.appendChild(fwdDiv);
+      // 🔹 отображение имени автора над сообщением (для входящих)
+      if (!isOwn) {
+      const authorDiv = document.createElement('div');
+      authorDiv.style.fontWeight = 'bold';
+      authorDiv.style.color = '#007bff';
+      authorDiv.style.marginBottom = '3px';
+      authorDiv.textContent = senderName || replyUser || 'Unknown';
+      div.appendChild(authorDiv);
       }
 
+      // 🔹 пересланное сообщение
+      if (forwardedFrom) {
+      const fwdDiv = document.createElement('div');
+      fwdDiv.style.fontSize = '0.8em';
+      fwdDiv.style.padding = '4px 8px';
+      fwdDiv.style.borderLeft = '3px solid #007bff';
+      fwdDiv.style.marginBottom = '4px';
+      fwdDiv.style.background = 'rgba(0,0,0,0.05)';
+      fwdDiv.style.borderRadius = '6px';
 
+      const fwdName = document.createElement('div');
+      fwdName.style.fontWeight = 'bold';
+      fwdName.textContent = `Forwarded from: ${forwardedFrom}`;
+
+      fwdDiv.appendChild(fwdName);
+      div.appendChild(fwdDiv);
+
+
+      }
 
       // 🔁 если это ответ
       if (replyTo && replyText) {
-        const replyDiv = document.createElement('div');
-        replyDiv.style.fontSize = '0.8em';
-        replyDiv.style.padding = '4px 8px';
-        replyDiv.style.borderLeft = '3px solid #007bff';
-        replyDiv.style.marginBottom = '4px';
-        replyDiv.style.background = 'rgba(0,0,0,0.05)';
-        replyDiv.style.borderRadius = '6px';
+      const replyDiv = document.createElement('div');
+      replyDiv.style.fontSize = '0.8em';
+      replyDiv.style.padding = '4px 8px';
+      replyDiv.style.borderLeft = '3px solid #007bff';
+      replyDiv.style.marginBottom = '4px';
+      replyDiv.style.background = 'rgba(0,0,0,0.05)';
+      replyDiv.style.borderRadius = '6px';
 
-        const replyName = document.createElement('div');
-        replyName.style.fontWeight = 'bold';
-        replyName.textContent = replyUser || 'User';
+      const replyName = document.createElement('div');
+      replyName.style.fontWeight = 'bold';
+      replyName.textContent = replyUser || 'User';
 
-        const replyMsg = document.createElement('div');
-        replyMsg.style.color = '#555';
-        replyMsg.textContent = replyText.length > 40 ? replyText.slice(0, 40) + '…' : replyText;
+      const replyMsg = document.createElement('div');
+      replyMsg.style.color = '#555';
+      replyMsg.textContent = replyText.length > 40 ? replyText.slice(0, 40) + '…' : replyText;
 
-        replyDiv.appendChild(replyName);
-        replyDiv.appendChild(replyMsg);
-        div.appendChild(replyDiv);
+      replyDiv.appendChild(replyName);
+      replyDiv.appendChild(replyMsg);
+      div.appendChild(replyDiv);
+
+
       }
 
       // ✉️ сам текст сообщения
@@ -823,17 +839,19 @@
 
       // ⏰ время
       if (ts) {
-        const timeEl = document.createElement('div');
-        timeEl.textContent = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        timeEl.style.fontSize = '0.75em';
-        timeEl.style.color = 'gray';
-        timeEl.style.marginTop = '4px';
-        div.appendChild(timeEl);
+      const timeEl = document.createElement('div');
+      timeEl.textContent = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      timeEl.style.fontSize = '0.75em';
+      timeEl.style.color = 'gray';
+      timeEl.style.marginTop = '4px';
+      div.appendChild(timeEl);
       }
 
       chatMessages.appendChild(div);
       chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
+      }
+
+    //chatMessages.scrollTop = chatMessages.scrollHeight;
 
     chatMessages.addEventListener('click', (e) => {
       const messageDiv = e.target.closest('.message');
