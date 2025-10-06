@@ -78,7 +78,17 @@ io.on('connection', (socket) => {
 
   // 📩 Обработка send_message: если клиент уже сохранил сообщение через REST (передал id) — используем его,
   // иначе создаём новое. В payload также пробрасываем tempId (если был), чтобы клиент мог заменить временный элемент.
-  socket.on('send_message', async ({ to, message, replyTo, forwardedFrom, id: existingId, tempId, timestamp }) => {
+  socket.on('send_message', async ({
+    to,
+    message,
+    replyTo,
+    replyText,     // 🟡 новое поле — текст цитируемого сообщения
+    replyUser,     // 🟡 новое поле — имя/ID автора цитируемого сообщения
+    forwardedFrom,
+    id: existingId,
+    tempId,
+    timestamp
+  }) => {
     try {
       const from = userId;
       const sender = await User.findById(from).lean();
@@ -95,10 +105,11 @@ io.on('connection', (socket) => {
             receiver: to,
             message,
             replyTo,
+            replyText,     // 🟡 сохраняем текст цитаты
+            replyUser,     // 🟡 сохраняем автора цитаты
             forwardedFrom,
             timestamp: timestamp || Date.now()
           });
-          // если create вернул Mongoose-документ, сделаем его plain-объект
           msgDoc = await Message.findById(msgDoc._id).lean();
         }
       } else {
@@ -108,6 +119,8 @@ io.on('connection', (socket) => {
           receiver: to,
           message,
           replyTo,
+          replyText,     // 🟡 сохраняем текст цитаты
+          replyUser,     // 🟡 сохраняем автора цитаты
           forwardedFrom,
           timestamp: timestamp || Date.now()
         });
@@ -122,6 +135,8 @@ io.on('connection', (socket) => {
         message: msgDoc.message,
         timestamp: msgDoc.timestamp,
         replyTo: msgDoc.replyTo,
+        replyText: msgDoc.replyText,   // 🟡 пробрасываем текст цитаты клиенту
+        replyUser: msgDoc.replyUser,   // 🟡 пробрасываем автора цитаты клиенту
         forwardedFrom: msgDoc.forwardedFrom,
         senderName: sender?.displayName || sender?.name || "User",
       };
@@ -131,7 +146,7 @@ io.on('connection', (socket) => {
       io.to(to).emit('new_message', payload);
       io.to(from).emit('new_message', payload);
 
-      // Уведомление о добавлении контакта (как у тебя было)
+      // Уведомление о добавлении контакта
       io.to(to).emit('contact_added', { from });
     } catch (err) {
       console.error("Ошибка при отправке сообщения:", err);
