@@ -700,10 +700,12 @@
 
           // ⚡ теперь только через socket
           socket.emit("send_message", {
-            to: contact.id,
-            message: text,
+            to: currentChatId,
+            message: messageInput.value,
             tempId,
-            forwardedFrom
+            replyTo: replyToId,             // ← ID оригинального сообщения
+            replyText: replyTextContent,    // ← небольшой текст оригинала
+            replyUser: replyUserName        // ← имя отправителя оригинального
           });
         }
 
@@ -1093,7 +1095,7 @@
       if (!currentChatId || !text) return;
 
       if (editMessageId) {
-        // ✏️ редактирование сообщения (оставляем как есть)
+        // ✏️ редактирование сообщения
         const res = await fetch(`${API_BASE_URL}${endpoints.messages.replace(':id', editMessageId)}`, {
           method: 'PUT',
           credentials: 'include',
@@ -1131,9 +1133,11 @@
           // 🔹 теперь сразу через сокет, без fetch
           socket.emit("send_message", {
             to: currentChatId,
-            message: text,
-            replyTo: replyToId,
-            tempId
+            message: messageInput.value,
+            tempId,
+            replyTo: replyToId,             // ← ID оригинального сообщения
+            replyText: replyTextContent,    // ← небольшой текст оригинала
+            replyUser: replyUserName        // ← имя отправителя оригинального
           });
         } catch (err) {
           console.error("Ошибка при отправке сообщения через socket:", err);
