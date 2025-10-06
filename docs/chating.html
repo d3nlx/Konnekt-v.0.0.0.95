@@ -1113,6 +1113,15 @@
         editMessageId = null;
         exitDeleteMode();
       } else {
+        // получаем текст и имя оригинального сообщения, если это reply
+        const replyTextContent = replyToId
+          ? document.querySelector(`[data-id="${replyToId}"] span`)?.textContent || null
+          : null;
+
+        const replyUserName = replyToId
+          ? (document.querySelector(`[data-id="${replyToId}"]`)?.dataset.senderName || "User")
+          : null;
+
         // 📩 новое сообщение — генерим временный ID
         const tempId = "temp-" + Date.now() + "-" + Math.random().toString(36).slice(2);
 
@@ -1122,22 +1131,22 @@
           tempId,
           Date.now(),   // временный timestamp
           replyToId,
-          replyToId ? document.querySelector(`[data-id="${replyToId}"] span`)?.textContent : null,
-          replyToId ? (document.querySelector(`[data-id="${replyToId}"]`).dataset.senderName || "User") : null,
+          replyTextContent,
+          replyUserName,
           null,
           currentUserDisplayName
         );
         updateContactPreview(currentChatId, text, Date.now());
 
         try {
-          // 🔹 теперь сразу через сокет, без fetch
+          // 🔹 отправляем через сокет
           socket.emit("send_message", {
             to: currentChatId,
-            message: messageInput.value,
+            message: text,
             tempId,
-            replyTo: replyToId,             // ← ID оригинального сообщения
-            replyText: replyTextContent,    // ← небольшой текст оригинала
-            replyUser: replyUserName        // ← имя отправителя оригинального
+            replyTo: replyToId,          // ← ID оригинального сообщения
+            replyText: replyTextContent, // ← небольшой текст оригинала
+            replyUser: replyUserName     // ← имя отправителя оригинального
           });
         } catch (err) {
           console.error("Ошибка при отправке сообщения через socket:", err);
@@ -1150,6 +1159,7 @@
 
       messageInput.value = '';
     };
+
 
     document.querySelector('.js-open-profile-button').addEventListener('click', () => {
       window.location.href = 'profile.html'
