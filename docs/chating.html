@@ -457,18 +457,24 @@
         // если контакта ещё нет → добавим
         let contactEl = document.querySelector(`.contact[data-id="${from}"]`);
         if (!contactEl) {
-        try {
-        await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: from })
-        });
-        await loadContacts();
-        } catch (e) {
-        console.error("Не удалось добавить новый контакт", e);
+          // Проверяем, нет ли такого контакта уже в списке
+          const existing = Array.from(document.querySelectorAll('.contact'))
+            .some(el => el.dataset.id === from);
+          if (!existing) {
+            try {
+              await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: from })
+              });
+              await loadContacts();
+            } catch (e) {
+              console.error("Не удалось добавить новый контакт", e);
+            }
+          }
         }
-        }
+
 
         // 🔹 определяем имя отправителя
         let senderName = 'Unknown';
@@ -561,6 +567,13 @@
       const res = await fetch(`${API_BASE_URL}${endpoints.contacts}`, { credentials: 'include' });
       let contacts = await res.json();
 
+      const seen = new Set();
+      contacts = contacts.filter(c => {
+        const contactId = c.id || c._id;
+        if (seen.has(contactId)) return false;
+        seen.add(contactId);
+        return true;
+      });
       // Сначала достанем последние сообщения для каждого контакта
       const contactsWithMeta = [];
       for (const c of contacts) {
