@@ -678,17 +678,14 @@
 
           const text = msgDiv.querySelector('span').textContent;
           const senderId = msgDiv.dataset.sender;
-          let forwardedFrom;
+          let forwardedFrom = (senderId === currentUserId)
+            ? currentUserDisplayName
+            : msgDiv.dataset.senderName || "Неизвестный";
 
-          if (senderId === currentUserId) {
-            forwardedFrom = currentUserDisplayName;
-          } else {
-            forwardedFrom = msgDiv.dataset.senderName || "Неизвестный";
-          }
-
-          // 📩 генерим временный ID и сразу рендерим "эхо"
+          // ВРЕМЕННЫЙ ID для быстрой отрисовки
           const tempId = "temp-" + Date.now() + "-" + Math.random().toString(36).slice(2);
 
+          // 👇 сразу отображаем в новом чате
           appendMessage(
             true,
             text,
@@ -700,16 +697,16 @@
             forwardedFrom,
             currentUserDisplayName
           );
+
+          // 👇 обновляем превью контакта
           updateContactPreview(contact.id, text, Date.now());
 
-          // ⚡ теперь только через socket
+          // ⚡ Отправляем через сокет (исправлено)
           socket.emit("send_message", {
-            to: currentChatId,
-            message: messageInput.value,
+            to: contact.id,         // 💡 пересылаем новому контакту
+            message: text,          // 💡 текст выделенного сообщения
             tempId,
-            replyTo: replyToId,             // ← ID оригинального сообщения
-            replyText: replyTextContent,    // ← небольшой текст оригинала
-            replyUser: replyUserName        // ← имя отправителя оригинального
+            forwardedFrom           // 💡 добавляем поле источника
           });
         }
 
@@ -717,12 +714,11 @@
         exitDeleteMode();
       }
 
-      // стандартный переход в чат
+      // стандартное открытие чата
       currentChatId = contact.id;
       chatHeader.textContent = `Chat with ${contact.displayName}`;
       document.querySelectorAll('.contact').forEach(el => el.classList.remove('active-contact'));
       const activeEl = document.querySelector(`.contact[data-id="${contact.id}"]`);
-      
       if (activeEl) activeEl.classList.add('active-contact');
       await loadMessages(contact.id);
     }
