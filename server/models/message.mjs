@@ -43,8 +43,7 @@ const MessageSchema = new mongoose.Schema({
   }, // 👈 имя того, кто переслал
   pinned: {
      type: Boolean, default: false 
-  },
-  read: { type: Boolean, default: false }
+  }
 });
 
 export const Message = mongoose.model('Message', MessageSchema);
