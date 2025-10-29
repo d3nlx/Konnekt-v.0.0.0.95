@@ -153,6 +153,23 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('mark_as_read', async ({ from }) => {
+  try {
+    // от кого прочитали (тот, кто писал)
+    const reader = userId; // тот, кто сейчас в чате
+    await Message.updateMany(
+      { sender: from, receiver: reader, read: false },
+      { $set: { read: true } }
+    );
+
+    // уведомляем обе стороны
+    io.to(from).emit('messages_read', { by: reader });
+    io.to(reader).emit('messages_read', { by: reader });
+  } catch (err) {
+    console.error("Ошибка при обновлении статуса прочитанных:", err);
+  }
+});
+
   // 📝 Редактирование сообщения
   socket.on('edit_message', async ({ id, newText }) => {
     try {

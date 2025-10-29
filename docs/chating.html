@@ -492,6 +492,14 @@
         updateContactPreview(from, message, timestamp);
         });
 
+      socket.on('messages_read', ({ by }) => {
+        if (by === currentChatId) {
+          document.querySelectorAll('.message.outgoing').forEach(msg => {
+            msg.querySelector('.status').textContent = '✔';
+          });
+        }
+      });
+
       socket.on('contact_added', async ({ from }) => {
         try {
           await fetch(`${API_BASE_URL}${endpoints.contacts}`, {
@@ -684,6 +692,8 @@
     // 3. ЧАТ
     // =========================
     async function openChat(contact) {
+      currentChatId = contact.id;
+      socket.emit('mark_as_read', { from: contact.id });
       if (forwardMode && selectedMessages.size > 0) {
         for (const id of selectedMessages) {
           const msgDiv = document.querySelector(`[data-id="${id}"]`);
@@ -782,6 +792,11 @@
       } else {
       div.dataset.senderName = isOwn ? currentUserDisplayName : "Unknown";
       }
+
+      const statusIcon = document.createElement('span');
+      statusIcon.classList.add('status');
+      statusIcon.textContent = isOwn ? '✔' : '✔✔'; // ✖ — отправлено, ✔ — прочитано
+      div.appendChild(statusIcon);
 
       const ts = (timestamp != null) ? new Date(timestamp).getTime() : null;
       if (ts) div.dataset.timestamp = String(ts);
