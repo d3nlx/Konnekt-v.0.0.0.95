@@ -342,6 +342,31 @@
     .selected {
       background-color: rgba(255, 0, 0, 0.1) !important;
     }
+
+    .message {
+      display: inline-block;
+      position: relative;
+      border-radius: 10px;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      max-width: 60%;
+    }
+
+    .message-text {
+      word-wrap: break-word;
+    }
+
+    .meta-info {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: gray;
+      margin-top: 2px;
+    }
+    .outgoing .meta-info { justify-content: flex-end; }
+    .incoming .meta-info { justify-content: flex-start; }
   </style>
 </head>
 <body>
@@ -494,8 +519,8 @@
 
       socket.on('messages_read', ({ by }) => {
         if (by === currentChatId) {
-          document.querySelectorAll('.message.outgoing').forEach(msg => {
-            msg.querySelector('.status').textContent = '✔';
+          document.querySelectorAll('.message.outgoing .status').forEach(el => {
+            el.textContent = '✔✔'; // теперь две галочки
           });
         }
       });
@@ -779,7 +804,18 @@
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    function appendMessage(isOwn, text, id = null, timestamp = null, replyTo = null, replyText = null, replyUser = null, forwardedFrom = null, senderName = null) {
+    function appendMessage(
+      isOwn,
+      text,
+      id = null,
+      timestamp = null,
+      replyTo = null,
+      replyText = null,
+      replyUser = null,
+      forwardedFrom = null,
+      senderName = null,
+      pinned = false // 🔹 добавлено новое свойство
+    ) {
       const div = document.createElement('div');
       div.className = `message ${isOwn ? 'outgoing' : 'incoming'}`;
       if (id) div.dataset.id = id;
@@ -788,9 +824,9 @@
 
       // ⚡ сохраняем имя автора
       if (senderName) {
-      div.dataset.senderName = senderName;
+        div.dataset.senderName = senderName;
       } else {
-      div.dataset.senderName = isOwn ? currentUserDisplayName : "Unknown";
+        div.dataset.senderName = isOwn ? currentUserDisplayName : "Unknown";
       }
 
       const statusIcon = document.createElement('span');
@@ -803,47 +839,43 @@
 
       // 🔹 пересланное сообщение
       if (forwardedFrom) {
-      const fwdDiv = document.createElement('div');
-      fwdDiv.style.fontSize = '0.8em';
-      fwdDiv.style.padding = '4px 8px';
-      fwdDiv.style.borderLeft = '3px solid #007bff';
-      fwdDiv.style.marginBottom = '4px';
-      fwdDiv.style.background = 'rgba(0,0,0,0.05)';
-      fwdDiv.style.borderRadius = '6px';
+        const fwdDiv = document.createElement('div');
+        fwdDiv.style.fontSize = '0.8em';
+        fwdDiv.style.padding = '4px 8px';
+        fwdDiv.style.borderLeft = '3px solid #007bff';
+        fwdDiv.style.marginBottom = '4px';
+        fwdDiv.style.background = 'rgba(0,0,0,0.05)';
+        fwdDiv.style.borderRadius = '6px';
 
-      const fwdName = document.createElement('div');
-      fwdName.style.fontWeight = 'bold';
-      fwdName.textContent = `Forwarded from: ${forwardedFrom}`;
+        const fwdName = document.createElement('div');
+        fwdName.style.fontWeight = 'bold';
+        fwdName.textContent = `Forwarded from: ${forwardedFrom}`;
 
-      fwdDiv.appendChild(fwdName);
-      div.appendChild(fwdDiv);
-
-
+        fwdDiv.appendChild(fwdName);
+        div.appendChild(fwdDiv);
       }
 
       // 🔁 если это ответ
       if (replyTo && replyText) {
-      const replyDiv = document.createElement('div');
-      replyDiv.style.fontSize = '0.8em';
-      replyDiv.style.padding = '4px 8px';
-      replyDiv.style.borderLeft = '3px solid #007bff';
-      replyDiv.style.marginBottom = '4px';
-      replyDiv.style.background = 'rgba(0,0,0,0.05)';
-      replyDiv.style.borderRadius = '6px';
+        const replyDiv = document.createElement('div');
+        replyDiv.style.fontSize = '0.8em';
+        replyDiv.style.padding = '4px 8px';
+        replyDiv.style.borderLeft = '3px solid #007bff';
+        replyDiv.style.marginBottom = '4px';
+        replyDiv.style.background = 'rgba(0,0,0,0.05)';
+        replyDiv.style.borderRadius = '6px';
 
-      const replyName = document.createElement('div');
-      replyName.style.fontWeight = 'bold';
-      replyName.textContent = replyUser || 'User';
+        const replyName = document.createElement('div');
+        replyName.style.fontWeight = 'bold';
+        replyName.textContent = replyUser || 'User';
 
-      const replyMsg = document.createElement('div');
-      replyMsg.style.color = '#555';
-      replyMsg.textContent = replyText.length > 40 ? replyText.slice(0, 40) + '…' : replyText;
+        const replyMsg = document.createElement('div');
+        replyMsg.style.color = '#555';
+        replyMsg.textContent = replyText.length > 40 ? replyText.slice(0, 40) + '…' : replyText;
 
-      replyDiv.appendChild(replyName);
-      replyDiv.appendChild(replyMsg);
-      div.appendChild(replyDiv);
-
-
+        replyDiv.appendChild(replyName);
+        replyDiv.appendChild(replyMsg);
+        div.appendChild(replyDiv);
       }
 
       // ✉️ сам текст сообщения
@@ -853,17 +885,29 @@
 
       // ⏰ время
       if (ts) {
-      const timeEl = document.createElement('div');
-      timeEl.textContent = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      timeEl.style.fontSize = '0.75em';
-      timeEl.style.color = 'gray';
-      timeEl.style.marginTop = '4px';
-      div.appendChild(timeEl);
+        const timeEl = document.createElement('div');
+        timeEl.textContent = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        timeEl.style.fontSize = '0.75em';
+        timeEl.style.color = 'gray';
+        timeEl.style.marginTop = '4px';
+        div.appendChild(timeEl);
+      }
+
+      // 📌 закреплённое сообщение
+      if (pinned) {
+        div.classList.add('pinned-message');
+        div.style.border = '2px solid gold';
+        div.style.backgroundColor = '#fff8dc';
+        const pinIcon = document.createElement('span');
+        pinIcon.textContent = '📌';
+        pinIcon.style.marginLeft = '8px';
+        div.prepend(pinIcon);
       }
 
       chatMessages.appendChild(div);
       chatMessages.scrollTop = chatMessages.scrollHeight;
-      }
+    }
+
 
     //chatMessages.scrollTop = chatMessages.scrollHeight;
 
