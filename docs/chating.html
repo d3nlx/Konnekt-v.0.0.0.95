@@ -638,6 +638,11 @@
 
         contactsList.appendChild(div);
       }
+
+      if (currentChatId) {
+        const activeEl = document.querySelector(`.contact[data-id="${currentChatId}"]`);
+        if (activeEl) activeEl.classList.add('active-contact');
+      }
     }
 
 
